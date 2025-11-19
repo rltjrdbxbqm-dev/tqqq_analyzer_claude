@@ -98,8 +98,8 @@ class RealTimeInvestmentAnalyzer:
 
         return df.dropna()
 
-    def analyze_all_strategies(self, data):
-        """모든 전략 분석"""
+    def analyze_all_strategies_detailed(self, data):
+        """모든 전략 상세 분석"""
         latest = data.iloc[-1]
         
         # 1. 스토캐스틱 + MA 전략
@@ -117,13 +117,15 @@ class RealTimeInvestmentAnalyzer:
             short_ma_signals = sum([ma_signals[20], ma_signals[45]])
             tqqq_position_1 = short_ma_signals * 0.5
         
-        # 2. 오차율 전략
+        # 2. 오차율 전략 (상세 정보 포함)
+        error_strategy_details = []
         active_error_strategies = []
         above_ma_count = 0
         
         for strategy_name, params in self.error_rate_strategies.items():
             ma_period = params['ma_period']
             threshold = params['deviation_threshold']
+            holding_days = params['holding_days']
             current_deviation = latest[f'Deviation_{ma_period}']
             current_price = latest['TQQQ_Close']
             current_ma = latest[f'MA_{ma_period}']
@@ -133,8 +135,25 @@ class RealTimeInvestmentAnalyzer:
                 above_ma_count += 1
             
             buy_signal = (not price_above_ma) and (current_deviation <= threshold)
+            
             if buy_signal:
                 active_error_strategies.append(strategy_name)
+                sell_date = datetime.now() + timedelta(days=holding_days)
+                # 주말 조정
+                if sell_date.weekday() == 5:  # 토요일
+                    sell_date += timedelta(days=2)
+                elif sell_date.weekday() == 6:  # 일요일
+                    sell_date += timedelta(days=1)
+                
+                error_strategy_details.append({
+                    'name': strategy_name,
+                    'ma_period': ma_period,
+                    'current_deviation': current_deviation,
+                    'threshold': threshold,
+                    'status': '🚀 매수신호',
+                    'sell_date': sell_date.strftime('%Y-%m-%d'),
+                    'holding_days': holding_days
+                })
         
         if above_ma_count == len(self.error_rate_strategies):
             tqqq_position_2 = 1.0
@@ -143,12 +162,15 @@ class RealTimeInvestmentAnalyzer:
         else:
             tqqq_position_2 = above_ma_count / len(self.error_rate_strategies)
         
-        # 3. 최적화 전략
+        # 3. 최적화 전략 (상세 정보 포함)
+        optimized_strategy_details = []
         hold_strategies = []
+        sell_strategies = []
         
         for strategy_name, params in self.optimized_strategies.items():
             ma_period = params['ma_period']
             error_threshold = params['error_rate']
+            sell_days = params['sell_days']
             
             current_price = latest['TQQQ_Close']
             current_ma = latest[f'MA_{ma_period}']
@@ -157,11 +179,46 @@ class RealTimeInvestmentAnalyzer:
             if basic_signal:
                 current_error_rate = ((current_price - current_ma) / current_ma) * 100
                 sell_signal = current_error_rate >= error_threshold
+                
+                if sell_signal:
+                    sell_strategies.append(strategy_name)
+                    rebuy_date = datetime.now() + timedelta(days=sell_days)
+                    # 주말 조정
+                    if rebuy_date.weekday() == 5:
+                        rebuy_date += timedelta(days=2)
+                    elif rebuy_date.weekday() == 6:
+                        rebuy_date += timedelta(days=1)
+                    
+                    optimized_strategy_details.append({
+                        'name': strategy_name,
+                        'ma_period': ma_period,
+                        'current_error_rate': current_error_rate,
+                        'threshold': error_threshold,
+                        'status': '🔴 매도신호',
+                        'rebuy_date': rebuy_date.strftime('%Y-%m-%d'),
+                        'sell_days': sell_days
+                    })
+                else:
+                    hold_strategies.append(strategy_name)
+                    optimized_strategy_details.append({
+                        'name': strategy_name,
+                        'ma_period': ma_period,
+                        'current_error_rate': current_error_rate,
+                        'threshold': error_threshold,
+                        'status': '🟢 보유권장',
+                        'rebuy_date': None,
+                        'sell_days': None
+                    })
             else:
-                sell_signal = False
-            
-            if basic_signal and not sell_signal:
-                hold_strategies.append(strategy_name)
+                optimized_strategy_details.append({
+                    'name': strategy_name,
+                    'ma_period': ma_period,
+                    'current_error_rate': 0,
+                    'threshold': error_threshold,
+                    'status': '❌ MA하회',
+                    'rebuy_date': None,
+                    'sell_days': None
+                })
         
         tqqq_position_3 = len(hold_strategies) / len(self.optimized_strategies)
         
@@ -185,7 +242,10 @@ class RealTimeInvestmentAnalyzer:
             'final_tqqq': final_tqqq,
             'final_gld': final_gld,
             'active_error_count': len(active_error_strategies),
-            'hold_strategies_count': len(hold_strategies)
+            'hold_strategies_count': len(hold_strategies),
+            'error_strategy_details': error_strategy_details,
+            'optimized_strategy_details': optimized_strategy_details,
+            'sell_strategies_count': len(sell_strategies)
         }
 
 def main():
@@ -193,18 +253,13 @@ def main():
     st.title("🎯 실시간 투자 신호 분석기")
     st.markdown("TQQQ/GLD 포트폴리오 최적화 시스템")
     
-    # 자동 새로고침 옵션
+    # 새로고침 버튼
     col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        auto_refresh = st.checkbox("⏰ 자동 새로고침 (5분 간격)")
     with col2:
-        if st.button("🔄 지금 새로고침", type="primary"):
+        if st.button("🔄 새로고침", type="primary"):
             st.rerun()
     with col3:
         st.markdown(f"🕐 {datetime.now().strftime('%H:%M:%S')}")
-    
-    if auto_refresh:
-        st_autorefresh(interval=5 * 60 * 1000, key="datarefresh")
     
     # 분석기 초기화 및 데이터 로드
     analyzer = RealTimeInvestmentAnalyzer()
@@ -257,7 +312,7 @@ def main():
             )
         
         # 전략 분석
-        results = analyzer.analyze_all_strategies(data)
+        results = analyzer.analyze_all_strategies_detailed(data)
         
         st.markdown("---")
         
@@ -307,34 +362,123 @@ def main():
             **GLD**: {gld_amount:,.0f}원 ({int(gld_amount/latest['GLD_Close']/1300)}주)
             """)
         
-        # 전략별 상세 정보
+        # 전략별 상세 정보 - 개선된 버전
         st.markdown("---")
-        st.subheader("📈 전략별 분석")
+        st.subheader("📈 전략별 상세 분석")
         
-        col1, col2, col3 = st.columns(3)
+        # 탭으로 구성
+        tab1, tab2, tab3 = st.tabs(["1️⃣ 기본 전략", "2️⃣ 오차율 전략", "3️⃣ 최적화 전략"])
         
-        with col1:
-            st.markdown("#### 1️⃣ 기본 전략")
-            st.markdown(f"스토캐스틱: {'🟢 상승' if results['is_bullish'] else '🔴 하락'}")
-            for period, signal in results['ma_signals'].items():
-                st.markdown(f"MA{period}: {'✅' if signal else '❌'}")
-            st.markdown(f"**TQQQ 비중: {results['base_tqqq']:.1%}**")
+        with tab1:
+            st.markdown(f"### 스토캐스틱 + 이동평균 전략")
+            st.markdown(f"**현재 상태**: {'🟢 상승 추세' if results['is_bullish'] else '🔴 하락 추세'}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**이동평균 조건:**")
+                for period, signal in results['ma_signals'].items():
+                    status = '✅ 충족' if signal else '❌ 미충족'
+                    price = latest[f'MA_{period}']
+                    deviation = latest[f'Deviation_{period}']
+                    st.markdown(f"• MA{period}: {status}")
+                    st.caption(f"  가격: ${price:.2f} (오차: {deviation:+.2f}%)")
+            
+            with col2:
+                st.markdown("**포지션 계산:**")
+                st.markdown(f"• 기본 TQQQ 비중: **{results['base_tqqq']:.1%}**")
+                st.markdown(f"• GLD 비중: **{(1-results['base_tqqq']):.1%}**")
+                
+                if results['is_bullish']:
+                    st.info("상승 추세: 4개 MA 조건 × 25%씩")
+                else:
+                    st.info("하락 추세: MA20,45 조건 × 50%씩")
         
-        with col2:
-            st.markdown("#### 2️⃣ 오차율 전략")
-            st.markdown(f"활성 매수 신호: {results['active_error_count']}개")
-            if results['error_adjustment'] > 0:
-                st.success(f"조정: +{results['error_adjustment']:.1%}")
+        with tab2:
+            st.markdown(f"### 오차율 하락 매수 전략")
+            st.markdown(f"**활성 매수 신호**: {results['active_error_count']}개")
+            
+            if results['error_strategy_details']:
+                st.success(f"🚀 **매수 신호 발생! TQQQ 비중 +{results['error_adjustment']:.1%}**")
+                
+                for detail in results['error_strategy_details']:
+                    with st.expander(f"MA{detail['ma_period']} 전략 - {detail['status']}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"**현재 오차율**: {detail['current_deviation']:.2f}%")
+                            st.markdown(f"**매수 임계값**: {detail['threshold']:.1f}%")
+                            st.markdown(f"**상태**: {detail['status']}")
+                        with col2:
+                            st.markdown(f"**보유 기간**: {detail['holding_days']}일")
+                            st.markdown(f"**매도 예정일**: {detail['sell_date']}")
+                            gap = detail['current_deviation'] - detail['threshold']
+                            st.markdown(f"**임계값 초과**: {gap:.2f}%p")
             else:
-                st.info("조정 없음")
+                st.info("⏳ 현재 매수 신호 없음 (조정 대기 중)")
+                
+                # 대기 중인 전략들의 현황 표시
+                st.markdown("**각 전략 현황:**")
+                for strategy_name, params in analyzer.error_rate_strategies.items():
+                    ma_period = params['ma_period']
+                    current_deviation = latest[f'Deviation_{ma_period}']
+                    threshold = params['deviation_threshold']
+                    gap = current_deviation - threshold
+                    
+                    if latest['TQQQ_Close'] > latest[f'MA_{ma_period}']:
+                        status = "📈 MA 상회 (전략 비활성)"
+                    else:
+                        status = f"⏳ 하락 대기 (추가 {gap:.2f}%p 필요)"
+                    
+                    st.caption(f"• MA{ma_period}: 오차율 {current_deviation:.2f}% / 임계값 {threshold}% - {status}")
         
-        with col3:
-            st.markdown("#### 3️⃣ 최적화 전략")
-            st.markdown(f"보유 권장: {results['hold_strategies_count']}/3")
-            if results['optimized_adjustment'] < 0:
-                st.warning(f"조정: {results['optimized_adjustment']:.1%}")
+        with tab3:
+            st.markdown(f"### 백테스트 최적화 전략")
+            st.markdown(f"**보유 권장**: {results['hold_strategies_count']}/{len(analyzer.optimized_strategies)}")
+            st.markdown(f"**매도 신호**: {results['sell_strategies_count']}개")
+            
+            if results['optimized_adjustment'] != 0:
+                if results['optimized_adjustment'] < 0:
+                    st.warning(f"⚠️ **조정: TQQQ 비중 {results['optimized_adjustment']:.1%}**")
+                    st.caption("매도 신호로 인한 포지션 축소")
+                else:
+                    st.success(f"✅ **조정: TQQQ 비중 +{results['optimized_adjustment']:.1%}**")
             else:
-                st.info("조정 없음")
+                st.info("조정 없음 (전체 보유 권장)")
+            
+            # 각 전략 상세 정보
+            for detail in results['optimized_strategy_details']:
+                icon = "🔴" if detail['status'] == '🔴 매도신호' else "🟢" if detail['status'] == '🟢 보유권장' else "❌"
+                
+                with st.expander(f"{icon} MA{detail['ma_period']} 전략 - {detail['status']}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**현재 오차율**: {detail['current_error_rate']:.2f}%")
+                        st.markdown(f"**매도 임계값**: {detail['threshold']:.1f}%")
+                        st.markdown(f"**상태**: {detail['status']}")
+                    
+                    with col2:
+                        if detail['status'] == '🔴 매도신호':
+                            st.markdown(f"**조정 기간**: {detail['sell_days']}일")
+                            st.markdown(f"**재매수 예정일**: {detail['rebuy_date']}")
+                            gap = detail['current_error_rate'] - detail['threshold']
+                            st.markdown(f"**임계값 초과**: +{gap:.2f}%p")
+                        elif detail['status'] == '🟢 보유권장':
+                            gap = detail['threshold'] - detail['current_error_rate']
+                            st.markdown(f"**매도까지 여유**: {gap:.2f}%p")
+            
+            # 조정 계산 설명
+            with st.expander("📊 조정값 계산 방법"):
+                st.markdown(f"""
+                **조정값 = (보유권장 비율 - 1.0) × 0.2**
+                
+                • 보유권장 비율: {results['hold_strategies_count']}/3 = {results['hold_strategies_count']/3:.2f}
+                • 계산: ({results['hold_strategies_count']/3:.2f} - 1.0) × 0.2 = **{results['optimized_adjustment']:.3f}**
+                
+                **의미:**
+                - 3개 모두 보유 권장 시: 조정 없음 (0%)
+                - 2개 보유 권장 시: TQQQ -6.7% 조정
+                - 1개 보유 권장 시: TQQQ -13.3% 조정
+                - 0개 보유 권장 시: TQQQ -20% 조정
+                """)
         
         # 차트
         st.markdown("---")
@@ -385,18 +529,6 @@ def main():
             - 정기적인 포트폴리오 리밸런싱이 필요합니다
             - 레버리지 ETF(TQQQ)는 높은 변동성을 가집니다
             """)
-
-# Streamlit 자동 새로고침 함수
-def st_autorefresh(interval, key):
-    """Streamlit 자동 새로고침"""
-    import streamlit.components.v1 as components
-    components.html(f"""
-        <script>
-            setTimeout(function() {{
-                window.parent.document.querySelector('[data-testid="stApp"]').dispatchEvent(new Event('rerun'));
-            }}, {interval});
-        </script>
-    """, height=0, width=0)
 
 if __name__ == "__main__":
     main()
