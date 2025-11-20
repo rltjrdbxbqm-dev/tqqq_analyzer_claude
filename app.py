@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v3.2",
+    page_title="TQQQ/GLD Sniper v3.3",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -33,7 +33,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v3.2 (액면분할 보정 + UI 개선 + 선입선출 로직)"""
+    """실시간 투자 신호 분석기 - v3.3 (재매수/재매도 날짜 표시 추가)"""
 
     def __init__(self):
         # 설정값 정의
@@ -80,10 +80,7 @@ class RealTimeInvestmentAnalyzer:
             # 주의: 야후 파이낸스가 과거 데이터를 수정해주면 이 블록은 삭제해야 합니다.
             # ========================================================
             tqqq_cols = ['TQQQ_Open', 'TQQQ_High', 'TQQQ_Low', 'TQQQ_Close']
-            
-            # 오늘 날짜를 기준으로 이전 데이터는 모두 2로 나눔
             split_date = datetime.now().strftime('%Y-%m-%d')
-            
             mask = combined_data.index < split_date
             combined_data.loc[mask, tqqq_cols] = combined_data.loc[mask, tqqq_cols] / 2
             # ========================================================
@@ -139,8 +136,13 @@ class RealTimeInvestmentAnalyzer:
             if condition:
                 is_active = True
                 trigger_date = row.name
-                trigger_details = {'trigger_deviation': deviation, 'days_ago': i}
-                break # 최초 신호 발견 시 루프 종료
+                # [수정] 날짜 계산을 위해 trigger_date(Timestamp)도 함께 저장
+                trigger_details = {
+                    'trigger_deviation': deviation, 
+                    'days_ago': i,
+                    'trigger_date': trigger_date
+                }
+                break 
 
         return is_active, trigger_date, trigger_details
 
@@ -221,7 +223,7 @@ class RealTimeInvestmentAnalyzer:
 def main():
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.title("🎯 TQQQ Sniper Dashboard v3.2")
+        st.title("🎯 TQQQ Sniper Dashboard v3.3")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
@@ -290,14 +292,21 @@ def main():
                     with col_name:
                         st.markdown(f"**MA {ma}**")
                         if is_active:
-                            st.caption(f"✅ {res_today['error_logs'][name]['days_ago']}일전 진입")
+                            days_ago = res_today['error_logs'][name]['days_ago']
+                            st.caption(f"✅ {days_ago}일전 진입")
                         else:
                             st.caption("💤 대기중")
                     with col_prog:
                         st.progress(progress)
                     with col_val:
                         if is_active:
+                            # 날짜 계산 로직 추가
+                            log_info = res_today['error_logs'][name]
+                            trigger_date = log_info['trigger_date']
+                            target_sell_date = trigger_date + timedelta(days=params['holding_days'])
+                            
                             st.markdown("✅ **진입 완료**")
+                            st.markdown(f"📅 **{target_sell_date.strftime('%Y-%m-%d')}** 매도")
                         else:
                             gap = current_dev - threshold
                             if gap > 0:
@@ -332,7 +341,8 @@ def main():
                     with col_name:
                         st.markdown(f"**Opt MA {ma}**")
                         if is_active:
-                            st.caption(f"🚨 {res_today['sell_logs'][name]['days_ago']}일전 매도")
+                            days_ago = res_today['sell_logs'][name]['days_ago']
+                            st.caption(f"🚨 {days_ago}일전 매도")
                         elif dep_msg:
                             st.caption(dep_msg)
                         else:
@@ -341,7 +351,13 @@ def main():
                         st.progress(progress)
                     with col_val:
                         if is_active:
+                            # 날짜 계산 로직 추가
+                            log_info = res_today['sell_logs'][name]
+                            trigger_date = log_info['trigger_date']
+                            target_rebuy_date = trigger_date + timedelta(days=params['sell_days'])
+                            
                             st.markdown("🚨 **매도 완료**")
+                            st.markdown(f"📅 **{target_rebuy_date.strftime('%Y-%m-%d')}** 재진입")
                         else:
                             gap = target - current_dev
                             if gap > 0:
