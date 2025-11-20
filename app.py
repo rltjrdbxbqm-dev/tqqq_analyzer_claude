@@ -7,28 +7,42 @@ import plotly.graph_objects as go
 import warnings
 warnings.filterwarnings('ignore')
 
-# 페이지 설정
+# 페이지 설정 (아이콘 및 레이아웃)
 st.set_page_config(
-    page_title="실시간 투자 신호 분석기 v2.5",
-    page_icon="📊",
+    page_title="TQQQ/GLD Sniper v3.0",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
+# CSS 커스텀: 진행바 색상 및 간격 조정
+st.markdown("""
+<style>
+    .stProgress > div > div > div > div {
+        background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 24px;
+    }
+    .big-font {
+        font-size: 20px !important;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v2.5 (모바일 친화적 UI 개선)"""
+    """실시간 투자 신호 분석기 - v3.0 (Visual Dashboard)"""
 
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
         self.ma_periods = [20, 45, 151, 212]
-
         self.error_rate_strategies = {
             'TQQQ_Strategy_1': {'ma_period': 20, 'deviation_threshold': -12, 'holding_days': 8},
             'TQQQ_Strategy_2': {'ma_period': 45, 'deviation_threshold': -11, 'holding_days': 5},
             'TQQQ_Strategy_3': {'ma_period': 151, 'deviation_threshold': -21, 'holding_days': 8},
             'TQQQ_Strategy_4': {'ma_period': 212, 'deviation_threshold': -15, 'holding_days': 4},
         }
-
         self.optimized_strategies = {
             'TQQQ_Optimized_1': {'ma_period': 45, 'error_rate': 33, 'sell_days': 11},
             'TQQQ_Optimized_2': {'ma_period': 151, 'error_rate': 55, 'sell_days': 13, 'depends_on': 20},
@@ -47,7 +61,6 @@ class RealTimeInvestmentAnalyzer:
                 if isinstance(stock_data.columns, pd.MultiIndex):
                     stock_data.columns = stock_data.columns.droplevel(1)
                 data[ticker] = stock_data
-
             combined_data = pd.DataFrame()
             for ticker in tickers:
                 for col in ['Open', 'High', 'Low', 'Close']:
@@ -65,7 +78,6 @@ class RealTimeInvestmentAnalyzer:
         df['Lowest_Low'] = df['TQQQ_Low'].rolling(window=period).min()
         df['%K'] = ((df['TQQQ_Close'] - df['Lowest_Low']) / (df['Highest_High'] - df['Lowest_Low']) * 100).rolling(window=k_p).mean()
         df['%D'] = df['%K'].rolling(window=d_p).mean()
-
         for ma in self.ma_periods:
             df[f'MA_{ma}'] = df['TQQQ_Close'].rolling(window=ma).mean()
             df[f'Deviation_{ma}'] = ((df['TQQQ_Close'] - df[f'MA_{ma}']) / df[f'MA_{ma}']) * 100
@@ -103,7 +115,6 @@ class RealTimeInvestmentAnalyzer:
     def analyze_portfolio(self, data, target_idx=None):
         if target_idx is None: target_idx = len(data) - 1
         target_data = data.iloc[target_idx]
-        
         is_bullish = target_data['%K'] > target_data['%D']
         ma_signals = {p: target_data['TQQQ_Close'] > target_data[f'MA_{p}'] for p in self.ma_periods}
         
@@ -113,35 +124,28 @@ class RealTimeInvestmentAnalyzer:
         base_gld = 1 - base_tqqq
         base_cash = 0
         
-        active_error_strats = []
-        error_logs = {}
+        active_error_strats, error_logs = [], {}
         for name, params in self.error_rate_strategies.items():
             active, _, details = self.check_historical_signal(data, target_idx, 'error_buy', params)
             if active:
                 active_error_strats.append(name)
                 error_logs[name] = details
-        
         error_adj = len(active_error_strats) * 0.25
         
-        active_sell_strats = []
-        sell_logs = {}
+        active_sell_strats, sell_logs = [], {}
         for name, params in self.optimized_strategies.items():
             active, _, details = self.check_historical_signal(data, target_idx, 'optimized_sell', params)
             if active:
                 active_sell_strats.append(name)
                 sell_logs[name] = details
-
         opt_adj = len(active_sell_strats) * 0.25
         
-        final_tqqq = base_tqqq
-        final_gld = base_gld
-        final_cash = base_cash
-
+        final_tqqq, final_gld, final_cash = base_tqqq, base_gld, base_cash
+        
         if error_adj > 0:
             amt = min(final_gld, error_adj)
             final_gld -= amt
             final_tqqq += amt
-        
         if opt_adj > 0:
             amt = min(final_tqqq, opt_adj)
             final_tqqq -= amt
@@ -170,12 +174,15 @@ class RealTimeInvestmentAnalyzer:
         return today, yesterday, changes, actions
 
 def main():
-    st.title("🎯 실시간 투자 신호 v2.5")
-    
-    if st.button("🔄 새로고침", type="primary", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-        
+    # 상단 헤더 영역
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.title("🎯 TQQQ Sniper Dashboard")
+    with col2:
+        if st.button("🔄 Refresh", type="primary"):
+            st.cache_data.clear()
+            st.rerun()
+            
     analyzer = RealTimeInvestmentAnalyzer()
     data = analyzer.get_latest_data()
     
@@ -184,122 +191,150 @@ def main():
         latest = data.iloc[-1]
         res_today, res_prev, changes, actions = analyzer.analyze_all(data)
         
-        # 1. 핵심 요약
-        st.subheader("📊 시장 현황")
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("TQQQ", f"${latest['TQQQ_Close']:.2f}", f"{((latest['TQQQ_Close']/data.iloc[-2]['TQQQ_Close'])-1)*100:+.2f}%")
-        with c2: st.metric("GLD", f"${latest['GLD_Close']:.2f}", f"{((latest['GLD_Close']/data.iloc[-2]['GLD_Close'])-1)*100:+.2f}%")
-        with c3: st.metric("Stochastic", f"{latest['%K']:.0f}", "Bull" if res_today['is_bullish'] else "Bear")
-
-        # 2. 포트폴리오
-        st.subheader("📋 포트폴리오")
-        
-        # 카드 스타일로 중요 정보 강조
-        st.info(f"""
-        **📅 오늘 권장 비중**
-        
-        - **TQQQ**: {res_today['final_tqqq']:.1%} ({changes['tqqq']:+.1%})
-        - **GLD**: {res_today['final_gld']:.1%} ({changes['gld']:+.1%})
-        - **Cash**: {res_today['final_cash']:.1%}
-        """)
-        
+        # 1. Action Card (가장 중요한 정보)
+        st.markdown("### 📢 Action Required")
         if actions:
-            st.warning("🔔 **매매 신호 발생!**")
-            for a in actions: st.write(f"- {a['action']} **{a['asset']}**: {a['amt']:.1%}")
+            for a in actions:
+                if a['action'] == '매수':
+                    st.success(f"### 🚀 {a['asset']} {a['amt']:.1%} 매수하세요")
+                else:
+                    st.error(f"### 📉 {a['asset']} {a['amt']:.1%} 매도하세요")
         else:
-            st.success("✅ **포지션 유지 (매매 없음)**")
+            st.info("### ☕ 오늘은 매매 없이 홀딩입니다.")
 
         st.markdown("---")
+
+        # 2. Portfolio Overview (시각적 비중 표시)
+        st.markdown("### 💼 Portfolio Composition")
         
-        # 3. 전략 모니터링 (카드 리스트 방식 - 모바일 최적화)
-        st.subheader("🔍 전략 상세 & 목표 거리(Gap)")
+        # 비중을 가로 바 형태로 시각화 (Native Progress Bar 활용)
+        # 전체 100% 기준: TQQQ(초록) | GLD(노랑) | CASH(파랑) - 스트림릿 기본 바로는 다색 표현이 어려우므로 3개 컬럼으로 분리
         
-        # [매수 전략 섹션]
-        st.markdown(f"#### 2️⃣ 오차율 매수 (GLD → TQQQ) : **{res_today['error_adj']:.1%} 조정**")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("TQQQ Allocation", f"{res_today['final_tqqq']:.1%}", f"{changes['tqqq']:+.1%}")
+            st.progress(res_today['final_tqqq'])
+        with c2:
+            st.metric("GLD Allocation", f"{res_today['final_gld']:.1%}", f"{changes['gld']:+.1%}")
+            st.progress(res_today['final_gld'])
+        with c3:
+            st.metric("Cash Allocation", f"{res_today['final_cash']:.1%}", "")
+            st.progress(res_today['final_cash'])
+
+        # 3. Strategy Monitor (탭으로 분리하여 깔끔하게)
+        st.markdown("---")
+        st.subheader("🔍 Strategy Monitor")
         
-        for name, params in analyzer.error_rate_strategies.items():
-            ma = params['ma_period']
-            threshold = params['deviation_threshold']
-            current_dev = latest[f'Deviation_{ma}']
-            is_active = name in res_today['active_error_strats']
-            gap = current_dev - threshold
+        tab1, tab2, tab3 = st.tabs(["📉 매수 전략 (Buy)", "📈 매도 전략 (Sell)", "📊 시장 차트"])
+        
+        # [Tab 1] 매수 전략 (오차율이 낮을수록 좋음)
+        with tab1:
+            st.markdown(f"**조정 비중: {res_today['error_adj']:.1%} (GLD → TQQQ)**")
             
-            # 카드 UI 구성
-            with st.container():
-                # 제목 줄 (전략명 + 상태뱃지)
-                col_head, col_badge = st.columns([3, 1])
-                col_head.markdown(f"**Strategy (MA{ma})**")
-                if is_active:
-                    col_badge.markdown("✅ **활성**")
-                else:
-                    col_badge.markdown("💤 대기")
+            for name, params in analyzer.error_rate_strategies.items():
+                ma = params['ma_period']
+                threshold = params['deviation_threshold']
+                current_dev = latest[f'Deviation_{ma}']
+                is_active = name in res_today['active_error_strats']
                 
-                # 내용 줄
-                if is_active:
-                    days = res_today['error_logs'][name]['days_ago']
-                    st.success(f"🚀 **진입 완료** ({days}일 전)\n\n현재 오차: {current_dev:.2f}%")
+                # 진행률 계산 (현재 오차가 기준값 대비 얼마나 왔는가)
+                # 예: 기준 -10, 현재 -5 -> 50% 진행
+                # 예: 기준 -10, 현재 -12 -> 100% 진행 (이미 달성)
+                
+                if current_dev > 0:
+                    progress = 0.0 # 오차율이 양수면 진행률 0
                 else:
-                    # 진행상황 바 (Visual) -> 텍스트로 대체하여 깔끔하게
-                    st.markdown(f"현재: `{current_dev:.2f}%` vs 목표: `{threshold}%`")
-                    
-                    if gap > 0:
-                        # 목표 미달성 (Gap 존재)
-                        st.markdown(f"📉 **{gap:.2f}% 포인트 더 하락해야 함**")
+                    # 둘 다 음수일 때
+                    if current_dev <= threshold:
+                        progress = 1.0
                     else:
-                        # 오차율은 도달했으나 MA조건 등 다른 이유로 대기중
-                        st.markdown("⚠️ **오차율 조건 충족 (다른 조건 대기중)**")
+                        progress = min(1.0, abs(current_dev) / abs(threshold))
                 
-                st.markdown("---") # 구분선
+                with st.container():
+                    col_name, col_prog, col_val = st.columns([2, 4, 2])
+                    
+                    with col_name:
+                        st.markdown(f"**MA {ma}**")
+                        if is_active:
+                            st.caption(f"✅ {res_today['error_logs'][name]['days_ago']}일전 진입")
+                        else:
+                            st.caption("💤 대기중")
+                            
+                    with col_prog:
+                        st.progress(progress)
+                        
+                    with col_val:
+                        if is_active:
+                            st.markdown("✅ **진입 완료**")
+                        else:
+                            # Gap 계산
+                            gap = current_dev - threshold
+                            if gap > 0:
+                                st.markdown(f"📉 **-{gap:.1f}%p** 남음")
+                            else:
+                                st.markdown("⚠️ **조건 대기**")
+                    st.divider()
 
-        # [매도 전략 섹션]
-        st.markdown(f"#### 3️⃣ 최적화 매도 (TQQQ → Cash) : **{abs(res_today['opt_adj']):.1%} 조정**")
-        
-        for name, params in analyzer.optimized_strategies.items():
-            ma = params['ma_period']
-            target = params['error_rate']
-            current_dev = latest[f'Deviation_{ma}']
-            is_active = name in res_today['active_sell_strats']
-            gap = target - current_dev
+        # [Tab 2] 매도 전략 (오차율이 높을수록 좋음)
+        with tab2:
+            st.markdown(f"**조정 비중: {abs(res_today['opt_adj']):.1%} (TQQQ → Cash)**")
             
-            # 의존성 체크
-            dep_msg = ""
-            if 'depends_on' in params and not (latest['TQQQ_Close'] > latest[f"MA_{params['depends_on']}"]):
-                dep_msg = "(MA조건 미달)"
-
-            with st.container():
-                col_head, col_badge = st.columns([3, 1])
-                col_head.markdown(f"**Optimized (MA{ma})**")
+            for name, params in analyzer.optimized_strategies.items():
+                ma = params['ma_period']
+                target = params['error_rate']
+                current_dev = latest[f'Deviation_{ma}']
+                is_active = name in res_today['active_sell_strats']
                 
-                if is_active:
-                    col_badge.markdown("🚨 **활성**")
+                # 진행률 계산
+                # 예: 목표 30, 현재 15 -> 50% 진행
+                if current_dev < 0:
+                    progress = 0.0
                 else:
-                    col_badge.markdown(f"💤 대기")
-                
-                if is_active:
-                    days = res_today['sell_logs'][name]['days_ago']
-                    st.error(f"🔴 **매도 실행 중** ({days}일 전)\n\n현재 오차: {current_dev:.2f}%")
-                else:
-                    st.markdown(f"현재: `{current_dev:.2f}%` vs 목표: `{target}%`")
-                    
-                    if dep_msg:
-                        st.caption(f"🚫 {dep_msg}")
-                    
-                    if gap > 0:
-                        st.markdown(f"📈 **{gap:.2f}% 포인트 더 상승해야 함**")
+                    if current_dev >= target:
+                        progress = 1.0
                     else:
-                        st.markdown("⚠️ **목표 도달 (다른 조건 대기중)**")
+                        progress = min(1.0, current_dev / target)
                 
-                st.markdown("---")
+                # 의존성 체크
+                dep_msg = ""
+                if 'depends_on' in params and not (latest['TQQQ_Close'] > latest[f"MA_{params['depends_on']}"]):
+                    dep_msg = "🚫 MA조건 미달"
 
-        # 차트는 맨 아래로 이동 (모바일 스크롤 고려)
-        with st.expander("📈 TQQQ 차트 열기"):
+                with st.container():
+                    col_name, col_prog, col_val = st.columns([2, 4, 2])
+                    
+                    with col_name:
+                        st.markdown(f"**Opt MA {ma}**")
+                        if is_active:
+                            st.caption(f"🚨 {res_today['sell_logs'][name]['days_ago']}일전 매도")
+                        elif dep_msg:
+                            st.caption(dep_msg)
+                        else:
+                            st.caption("💤 대기중")
+                            
+                    with col_prog:
+                        st.progress(progress)
+                        
+                    with col_val:
+                        if is_active:
+                            st.markdown("🚨 **매도 완료**")
+                        else:
+                            gap = target - current_dev
+                            if gap > 0:
+                                st.markdown(f"📈 **+{gap:.1f}%p** 남음")
+                            else:
+                                st.markdown("⚠️ **조건 대기**")
+                    st.divider()
+
+        # [Tab 3] 차트
+        with tab3:
             fig = go.Figure()
             chart_data = data.iloc[-120:]
             fig.add_trace(go.Candlestick(x=chart_data.index, open=chart_data['TQQQ_Open'], high=chart_data['TQQQ_High'], low=chart_data['TQQQ_Low'], close=chart_data['TQQQ_Close'], name='TQQQ'))
             colors = ['#FF9900', '#00CC99', '#3366FF', '#FF33CC']
             for i, ma in enumerate(analyzer.ma_periods):
                 fig.add_trace(go.Scatter(x=chart_data.index, y=chart_data[f'MA_{ma}'], name=f'MA {ma}', line=dict(color=colors[i], width=1)))
-            fig.update_layout(height=400, margin=dict(l=0,r=0,t=20,b=0), template="plotly_dark", xaxis_rangeslider_visible=False)
+            fig.update_layout(height=500, margin=dict(l=0,r=0,t=20,b=0), template="plotly_dark", xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
