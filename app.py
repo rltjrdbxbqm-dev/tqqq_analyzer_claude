@@ -7,15 +7,17 @@ import plotly.graph_objects as go
 import warnings
 warnings.filterwarnings('ignore')
 
-# 페이지 설정
+# -----------------------------------------------------------
+# 1. 페이지 설정 및 CSS 스타일링
+# -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v3.1",
+    page_title="TQQQ/GLD Sniper v3.2",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# CSS 커스텀
+# 진행바 커스텀 디자인 (그라데이션)
 st.markdown("""
 <style>
     .stProgress > div > div > div > div {
@@ -27,18 +29,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# -----------------------------------------------------------
+# 2. 분석기 클래스 정의
+# -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v3.1 (First-In Logic Applied)"""
+    """실시간 투자 신호 분석기 - v3.2 (액면분할 보정 + UI 개선 + 선입선출 로직)"""
 
     def __init__(self):
+        # 설정값 정의
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
         self.ma_periods = [20, 45, 151, 212]
+        
+        # 매수 전략 (오차율)
         self.error_rate_strategies = {
             'TQQQ_Strategy_1': {'ma_period': 20, 'deviation_threshold': -12, 'holding_days': 8},
             'TQQQ_Strategy_2': {'ma_period': 45, 'deviation_threshold': -11, 'holding_days': 5},
             'TQQQ_Strategy_3': {'ma_period': 151, 'deviation_threshold': -21, 'holding_days': 8},
             'TQQQ_Strategy_4': {'ma_period': 212, 'deviation_threshold': -15, 'holding_days': 4},
         }
+        
+        # 매도 전략 (최적화)
         self.optimized_strategies = {
             'TQQQ_Optimized_1': {'ma_period': 45, 'error_rate': 33, 'sell_days': 11},
             'TQQQ_Optimized_2': {'ma_period': 151, 'error_rate': 55, 'sell_days': 13, 'depends_on': 20},
@@ -47,6 +57,7 @@ class RealTimeInvestmentAnalyzer:
 
     @st.cache_data(ttl=300)
     def get_latest_data(_self, days_back=400):
+        """데이터 가져오기 및 액면분할 보정"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
@@ -57,37 +68,58 @@ class RealTimeInvestmentAnalyzer:
                 if isinstance(stock_data.columns, pd.MultiIndex):
                     stock_data.columns = stock_data.columns.droplevel(1)
                 data[ticker] = stock_data
+            
             combined_data = pd.DataFrame()
             for ticker in tickers:
                 for col in ['Open', 'High', 'Low', 'Close']:
                     if col in data[ticker].columns:
                         combined_data[f'{ticker}_{col}'] = data[ticker][col]
+            
+            # ========================================================
+            # 🚨 [긴급 수정] TQQQ 1:2 액면분할 수동 보정
+            # 주의: 야후 파이낸스가 과거 데이터를 수정해주면 이 블록은 삭제해야 합니다.
+            # ========================================================
+            tqqq_cols = ['TQQQ_Open', 'TQQQ_High', 'TQQQ_Low', 'TQQQ_Close']
+            
+            # 오늘 날짜를 기준으로 이전 데이터는 모두 2로 나눔
+            split_date = datetime.now().strftime('%Y-%m-%d')
+            
+            mask = combined_data.index < split_date
+            combined_data.loc[mask, tqqq_cols] = combined_data.loc[mask, tqqq_cols] / 2
+            # ========================================================
+            
             return combined_data.dropna()
+            
         except Exception as e:
             st.error(f"데이터 오류: {e}")
             return None
 
     def calculate_technical_indicators(self, data):
+        """지표 계산"""
         df = data.copy()
         period, k_p, d_p = self.stoch_config.values()
+        
+        # 스토캐스틱
         df['Highest_High'] = df['TQQQ_High'].rolling(window=period).max()
         df['Lowest_Low'] = df['TQQQ_Low'].rolling(window=period).min()
         df['%K'] = ((df['TQQQ_Close'] - df['Lowest_Low']) / (df['Highest_High'] - df['Lowest_Low']) * 100).rolling(window=k_p).mean()
         df['%D'] = df['%K'].rolling(window=d_p).mean()
+        
+        # 이동평균 및 오차율
         for ma in self.ma_periods:
             df[f'MA_{ma}'] = df['TQQQ_Close'].rolling(window=ma).mean()
             df[f'Deviation_{ma}'] = ((df['TQQQ_Close'] - df[f'MA_{ma}']) / df[f'MA_{ma}']) * 100
+            
         return df.dropna()
 
     def check_historical_signal(self, data, end_idx, strategy_type, params):
-        """과거 신호 우선 (First-In) 로직 적용"""
+        """과거 신호 우선 (First-In) 로직"""
         is_active, trigger_date, trigger_details = False, None, {}
         days_check = params['holding_days'] if strategy_type == 'error_buy' else params['sell_days']
         ma_period = params['ma_period']
         threshold = params['deviation_threshold'] if strategy_type == 'error_buy' else params['error_rate']
 
-        # 중요: range(days_check - 1, -1, -1) -> 과거부터 현재 순으로 검색
-        # 예: 7일전 -> 6일전 -> ... -> 오늘
+        # 과거 -> 현재 순서로 검색 (가장 먼저 발생한 신호 우선)
         for i in range(days_check - 1, -1, -1):
             idx = end_idx - i
             if idx < 0: continue
@@ -107,16 +139,17 @@ class RealTimeInvestmentAnalyzer:
             if condition:
                 is_active = True
                 trigger_date = row.name
-                # 가장 먼저 발생한(가장 오래된) 신호를 찾으면 즉시 확정하고 루프 종료
-                # 이렇게 하면 그 이후(더 최근)에 발생한 신호는 무시됨 (기간 연장 방지)
                 trigger_details = {'trigger_deviation': deviation, 'days_ago': i}
-                break 
+                break # 최초 신호 발견 시 루프 종료
 
         return is_active, trigger_date, trigger_details
 
     def analyze_portfolio(self, data, target_idx=None):
+        """포트폴리오 비중 계산"""
         if target_idx is None: target_idx = len(data) - 1
         target_data = data.iloc[target_idx]
+        
+        # 1. 기본 전략
         is_bullish = target_data['%K'] > target_data['%D']
         ma_signals = {p: target_data['TQQQ_Close'] > target_data[f'MA_{p}'] for p in self.ma_periods}
         
@@ -126,6 +159,7 @@ class RealTimeInvestmentAnalyzer:
         base_gld = 1 - base_tqqq
         base_cash = 0
         
+        # 2. 매수 전략 체크
         active_error_strats, error_logs = [], {}
         for name, params in self.error_rate_strategies.items():
             active, _, details = self.check_historical_signal(data, target_idx, 'error_buy', params)
@@ -134,6 +168,7 @@ class RealTimeInvestmentAnalyzer:
                 error_logs[name] = details
         error_adj = len(active_error_strats) * 0.25
         
+        # 3. 매도 전략 체크
         active_sell_strats, sell_logs = [], {}
         for name, params in self.optimized_strategies.items():
             active, _, details = self.check_historical_signal(data, target_idx, 'optimized_sell', params)
@@ -142,12 +177,16 @@ class RealTimeInvestmentAnalyzer:
                 sell_logs[name] = details
         opt_adj = len(active_sell_strats) * 0.25
         
+        # 최종 비중 계산
         final_tqqq, final_gld, final_cash = base_tqqq, base_gld, base_cash
         
+        # GLD -> TQQQ
         if error_adj > 0:
             amt = min(final_gld, error_adj)
             final_gld -= amt
             final_tqqq += amt
+            
+        # TQQQ -> Cash
         if opt_adj > 0:
             amt = min(final_tqqq, opt_adj)
             final_tqqq -= amt
@@ -166,6 +205,7 @@ class RealTimeInvestmentAnalyzer:
         }
 
     def analyze_all(self, data):
+        """전일 대비 변화 분석"""
         today = self.analyze_portfolio(data)
         yesterday = self.analyze_portfolio(data, len(data)-2)
         changes = {'tqqq': today['final_tqqq'] - yesterday['final_tqqq'], 'gld': today['final_gld'] - yesterday['final_gld']}
@@ -175,10 +215,13 @@ class RealTimeInvestmentAnalyzer:
             elif chg < -0.01: actions.append({'action': '매도', 'asset': asset.upper(), 'amt': abs(chg)})
         return today, yesterday, changes, actions
 
+# -----------------------------------------------------------
+# 3. 메인 실행 함수 (UI 구성)
+# -----------------------------------------------------------
 def main():
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.title("🎯 TQQQ Sniper Dashboard")
+        st.title("🎯 TQQQ Sniper Dashboard v3.2")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
@@ -224,6 +267,7 @@ def main():
         
         tab1, tab2, tab3 = st.tabs(["📉 매수 전략 (Buy)", "📈 매도 전략 (Sell)", "📊 시장 차트"])
         
+        # Tab 1: 매수 전략
         with tab1:
             st.markdown(f"**조정 비중: {res_today['error_adj']:.1%} (GLD → TQQQ)**")
             for name, params in analyzer.error_rate_strategies.items():
@@ -232,6 +276,7 @@ def main():
                 current_dev = latest[f'Deviation_{ma}']
                 is_active = name in res_today['active_error_strats']
                 
+                # 진행률 계산
                 if current_dev > 0:
                     progress = 0.0
                 else:
@@ -261,6 +306,7 @@ def main():
                                 st.markdown("⚠️ **조건 대기**")
                     st.divider()
 
+        # Tab 2: 매도 전략
         with tab2:
             st.markdown(f"**조정 비중: {abs(res_today['opt_adj']):.1%} (TQQQ → Cash)**")
             for name, params in analyzer.optimized_strategies.items():
@@ -304,6 +350,7 @@ def main():
                                 st.markdown("⚠️ **조건 대기**")
                     st.divider()
 
+        # Tab 3: 차트
         with tab3:
             fig = go.Figure()
             chart_data = data.iloc[-120:]
