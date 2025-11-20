@@ -83,23 +83,30 @@ class RealTimeInvestmentAnalyzer:
             df[f'Deviation_{ma}'] = ((df['TQQQ_Close'] - df[f'MA_{ma}']) / df[f'MA_{ma}']) * 100
         return df.dropna()
 
-    def check_historical_signal(self, data, end_idx, strategy_type, params):
+def check_historical_signal(self, data, end_idx, strategy_type, params):
         is_active, trigger_date, trigger_details = False, None, {}
         days_check = params['holding_days'] if strategy_type == 'error_buy' else params['sell_days']
         ma_period = params['ma_period']
         threshold = params['deviation_threshold'] if strategy_type == 'error_buy' else params['error_rate']
 
-        for i in range(days_check):
+        # [수정된 부분]
+        # 기존: range(days_check) -> 0(오늘), 1(어제)... 순서 (최신 신호 우선)
+        # 변경: range(days_check - 1, -1, -1) -> 7(7일전), 6(6일전)... 0(오늘) 순서 (과거 신호 우선)
+        
+        for i in range(days_check - 1, -1, -1):
             idx = end_idx - i
             if idx < 0: continue
+            
             row = data.iloc[idx]
             price_above_ma = row['TQQQ_Close'] > row[f'MA_{ma_period}']
             deviation = row[f'Deviation_{ma_period}']
 
             condition = False
             if strategy_type == 'error_buy':
+                # 매수 전략: MA 아래 & 오차율 기준 이하
                 condition = (not price_above_ma) and (deviation <= threshold)
             else: 
+                # 매도 전략: MA 위 & 오차율 기준 이상 (의존성 체크 포함)
                 is_disabled = False
                 if 'depends_on' in params and not (row['TQQQ_Close'] > row[f"MA_{params['depends_on']}"]):
                     is_disabled = True
@@ -108,8 +115,11 @@ class RealTimeInvestmentAnalyzer:
             if condition:
                 is_active = True
                 trigger_date = row.name
+                # 가장 오래된(먼저 발생한) 신호를 찾으면 저장하고 즉시 종료(break)
+                # 따라서 이후 날짜(더 최근)에 발생한 신호는 무시됨
                 trigger_details = {'trigger_deviation': deviation, 'days_ago': i}
-                break
+                break 
+                
         return is_active, trigger_date, trigger_details
 
     def analyze_portfolio(self, data, target_idx=None):
