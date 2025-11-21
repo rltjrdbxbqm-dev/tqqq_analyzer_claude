@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v3.5",
+    page_title="TQQQ/GLD Sniper v3.6",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -33,7 +33,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v3.5 (액면분할 보정 제거: 야후 데이터 정상화 반영)"""
+    """실시간 투자 신호 분석기 - v3.6 (Action 메시지 폰트 크기 최적화)"""
 
     def __init__(self):
         # 설정값 정의
@@ -57,7 +57,7 @@ class RealTimeInvestmentAnalyzer:
 
     @st.cache_data(ttl=300)
     def get_latest_data(_self, days_back=400):
-        """데이터 가져오기 (순수 데이터)"""
+        """데이터 가져오기"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
@@ -74,8 +74,6 @@ class RealTimeInvestmentAnalyzer:
                 for col in ['Open', 'High', 'Low', 'Close']:
                     if col in data[ticker].columns:
                         combined_data[f'{ticker}_{col}'] = data[ticker][col]
-            
-            # 🚨 액면분할 보정 코드 삭제됨 (야후 파이낸스 자동 반영)
             
             return combined_data.dropna()
             
@@ -214,7 +212,7 @@ class RealTimeInvestmentAnalyzer:
 def main():
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.title("🎯 TQQQ Sniper Dashboard v3.5")
+        st.title("🎯 TQQQ Sniper Dashboard v3.6")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
@@ -233,11 +231,14 @@ def main():
         if actions:
             for a in actions:
                 if a['action'] == '매수':
-                    st.success(f"### 🚀 {a['asset']} {a['amt']:.1%} 매수하세요")
+                    # 폰트 사이즈 수정: ### 제거, ** 사용
+                    st.success(f"**🚀 {a['asset']} {a['amt']:.1%} 매수하세요**")
                 else:
-                    st.error(f"### 📉 {a['asset']} {a['amt']:.1%} 매도하세요")
+                    # 폰트 사이즈 수정: ### 제거, ** 사용
+                    st.error(f"**📉 {a['asset']} {a['amt']:.1%} 매도하세요**")
         else:
-            st.info("### ☕ 오늘은 매매 없이 홀딩입니다.")
+            # 폰트 사이즈 수정: ### 제거, ** 사용
+            st.info("**☕ 오늘은 매매 없이 홀딩입니다.**")
 
         st.markdown("---")
 
