@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v3.4",
+    page_title="TQQQ/GLD Sniper v3.5",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -33,7 +33,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v3.4 (액면분할 보정 날짜 지정 수정)"""
+    """실시간 투자 신호 분석기 - v3.5 (액면분할 보정 제거: 야후 데이터 정상화 반영)"""
 
     def __init__(self):
         # 설정값 정의
@@ -57,7 +57,7 @@ class RealTimeInvestmentAnalyzer:
 
     @st.cache_data(ttl=300)
     def get_latest_data(_self, days_back=400):
-        """데이터 가져오기 및 액면분할 보정"""
+        """데이터 가져오기 (순수 데이터)"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
@@ -75,18 +75,7 @@ class RealTimeInvestmentAnalyzer:
                     if col in data[ticker].columns:
                         combined_data[f'{ticker}_{col}'] = data[ticker][col]
             
-            # ========================================================
-            # 🚨 [긴급 수정] TQQQ 1:2 액면분할 보정 (날짜 지정)
-            # ========================================================
-            tqqq_cols = ['TQQQ_Open', 'TQQQ_High', 'TQQQ_Low', 'TQQQ_Close']
-            
-            # [수정됨] 2025-11-20 부터는 이미 분할된 데이터가 들어오므로,
-            # 그 '이전' 데이터만 2로 나누어야 함.
-            split_date = '2025-11-20' 
-            
-            mask = combined_data.index < split_date
-            combined_data.loc[mask, tqqq_cols] = combined_data.loc[mask, tqqq_cols] / 2
-            # ========================================================
+            # 🚨 액면분할 보정 코드 삭제됨 (야후 파이낸스 자동 반영)
             
             return combined_data.dropna()
             
@@ -225,7 +214,7 @@ class RealTimeInvestmentAnalyzer:
 def main():
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.title("🎯 TQQQ Sniper Dashboard v3.4")
+        st.title("🎯 TQQQ Sniper Dashboard v3.5")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
