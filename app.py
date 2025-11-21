@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v3.3",
+    page_title="TQQQ/GLD Sniper v3.4",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -33,7 +33,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v3.3 (재매수/재매도 날짜 표시 추가)"""
+    """실시간 투자 신호 분석기 - v3.4 (액면분할 보정 날짜 지정 수정)"""
 
     def __init__(self):
         # 설정값 정의
@@ -76,11 +76,14 @@ class RealTimeInvestmentAnalyzer:
                         combined_data[f'{ticker}_{col}'] = data[ticker][col]
             
             # ========================================================
-            # 🚨 [긴급 수정] TQQQ 1:2 액면분할 수동 보정
-            # 주의: 야후 파이낸스가 과거 데이터를 수정해주면 이 블록은 삭제해야 합니다.
+            # 🚨 [긴급 수정] TQQQ 1:2 액면분할 보정 (날짜 지정)
             # ========================================================
             tqqq_cols = ['TQQQ_Open', 'TQQQ_High', 'TQQQ_Low', 'TQQQ_Close']
-            split_date = datetime.now().strftime('%Y-%m-%d')
+            
+            # [수정됨] 2025-11-20 부터는 이미 분할된 데이터가 들어오므로,
+            # 그 '이전' 데이터만 2로 나누어야 함.
+            split_date = '2025-11-20' 
+            
             mask = combined_data.index < split_date
             combined_data.loc[mask, tqqq_cols] = combined_data.loc[mask, tqqq_cols] / 2
             # ========================================================
@@ -136,7 +139,6 @@ class RealTimeInvestmentAnalyzer:
             if condition:
                 is_active = True
                 trigger_date = row.name
-                # [수정] 날짜 계산을 위해 trigger_date(Timestamp)도 함께 저장
                 trigger_details = {
                     'trigger_deviation': deviation, 
                     'days_ago': i,
@@ -223,7 +225,7 @@ class RealTimeInvestmentAnalyzer:
 def main():
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.title("🎯 TQQQ Sniper Dashboard v3.3")
+        st.title("🎯 TQQQ Sniper Dashboard v3.4")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
@@ -300,7 +302,7 @@ def main():
                         st.progress(progress)
                     with col_val:
                         if is_active:
-                            # 날짜 계산 로직 추가
+                            # 날짜 계산
                             log_info = res_today['error_logs'][name]
                             trigger_date = log_info['trigger_date']
                             target_sell_date = trigger_date + timedelta(days=params['holding_days'])
@@ -351,7 +353,7 @@ def main():
                         st.progress(progress)
                     with col_val:
                         if is_active:
-                            # 날짜 계산 로직 추가
+                            # 날짜 계산
                             log_info = res_today['sell_logs'][name]
                             trigger_date = log_info['trigger_date']
                             target_rebuy_date = trigger_date + timedelta(days=params['sell_days'])
