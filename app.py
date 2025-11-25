@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v4.1",
+    page_title="TQQQ/GLD Sniper v4.2",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -24,15 +24,16 @@ st.markdown("""
         background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
     }
     div[data-testid="stMetricValue"] {
-        font-size: 24px;
+        font-size: 20px; /* 메트릭 폰트도 살짝 줄임 */
     }
     .date-badge {
         background-color: #262730;
-        padding: 5px 10px;
+        padding: 2px 6px; /* 배지 패딩 줄임 */
         border-radius: 5px;
         font-weight: bold;
         color: #00CC99;
         border: 1px solid #00CC99;
+        font-size: 0.9em; /* 배지 글자 크기 줄임 */
     }
     .status-cash { color: #FF4B4B; font-weight: bold; }
     .status-gld { color: #FFD700; font-weight: bold; }
@@ -44,7 +45,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v4.1 (백테스트 로직 동기화: 영업일 카운트 & 기간 리셋)"""
+    """실시간 투자 신호 분석기 - v4.2 (모바일 UI 최적화: 폰트 축소)"""
 
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
@@ -102,25 +103,17 @@ class RealTimeInvestmentAnalyzer:
         return df.dropna()
 
     def check_signal_with_simulation(self, data, strategy_type, params):
-        """
-        [핵심 수정] 백테스트 로직 동기화
-        1. 영업일(Row) 기준으로 카운트 다운
-        2. 신호 발생 시 남은 기간 리셋(연장)
-        """
         target_days = params['holding_days'] if strategy_type == 'error_buy' else params['sell_days']
         ma_period = params['ma_period']
         threshold = params['deviation_threshold'] if strategy_type == 'error_buy' else params['error_rate']
 
-        remaining_days = 0 # 남은 영업일 수
+        remaining_days = 0 
         last_trigger_info = {}
         
-        # Iterative Simulation
         for idx, row in data.iterrows():
-            # 1. 하루 지날 때마다 카운트 감소 (0 밑으로는 안 내려감)
             if remaining_days > 0:
                 remaining_days -= 1
             
-            # 2. 신호 조건 확인
             price_above_ma = row['TQQQ_Close'] > row[f'MA_{ma_period}']
             deviation = row[f'Deviation_{ma_period}']
             
@@ -133,7 +126,6 @@ class RealTimeInvestmentAnalyzer:
                     is_disabled = True
                 condition = (not is_disabled) and price_above_ma and (deviation >= threshold)
             
-            # 3. 신호 발생 시 기간 리셋 (덮어쓰기)
             if condition:
                 remaining_days = target_days
                 last_trigger_info = {
@@ -141,18 +133,17 @@ class RealTimeInvestmentAnalyzer:
                     'trigger_date': idx
                 }
 
-        # 시뮬레이션 종료 후 현재 상태 반환
         is_active = remaining_days > 0
         
         final_details = {}
         if last_trigger_info:
             today = data.index[-1]
-            days_ago_calendar = (today - last_trigger_info['trigger_date']).days # 단순 참고용 달력 날짜 차이
+            days_ago_calendar = (today - last_trigger_info['trigger_date']).days
             final_details = {
                 'trigger_deviation': last_trigger_info['trigger_deviation'],
                 'days_ago': days_ago_calendar,
                 'trigger_date': last_trigger_info['trigger_date'],
-                'remaining_trading_days': remaining_days # 남은 영업일 수
+                'remaining_trading_days': remaining_days
             }
 
         return is_active, remaining_days, final_details
@@ -175,7 +166,7 @@ class RealTimeInvestmentAnalyzer:
         base_gld = 1 - base_tqqq
         base_cash = 0
         
-        # 2. 매수 전략 (오차율)
+        # 2. 매수 전략
         active_error_strats, error_logs = [], {}
         for name, params in self.error_rate_strategies.items():
             active, remaining, details = self.check_signal_with_simulation(analysis_data, 'error_buy', params)
@@ -184,7 +175,7 @@ class RealTimeInvestmentAnalyzer:
                 error_logs[name] = details
         error_adj = len(active_error_strats) * 0.25
         
-        # 3. 매도 전략 (최적화)
+        # 3. 매도 전략
         active_sell_cash = []
         active_sell_gld = []
         sell_logs = {}
@@ -196,10 +187,8 @@ class RealTimeInvestmentAnalyzer:
                 sell_logs[name] = details
             
             if active:
-                # 기간 내: 현금 보유
                 active_sell_cash.append(name)
-            elif details: # 기간은 끝났지만 과거 기록이 있는 경우 체크
-                # 기간 만료 후 GLD 방어 로직 (v4.0 기능 유지)
+            elif details:
                 ma_val = target_data[f"MA_{params['ma_period']}"]
                 current_price = target_data["TQQQ_Close"]
                 
@@ -262,9 +251,10 @@ class RealTimeInvestmentAnalyzer:
 # 3. 메인 실행 함수
 # -----------------------------------------------------------
 def main():
+    # [수정] 타이틀 영역을 st.title 대신 st.markdown(h3)로 작게 변경
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.title("🎯 TQQQ Sniper v4.1")
+        st.markdown("### 🎯 TQQQ Sniper v4.2")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
@@ -277,11 +267,12 @@ def main():
         data = analyzer.calculate_technical_indicators(data)
         latest = data.iloc[-1]
         
-        # 요일 표시
         day_map = {0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'}
         weekday_str = day_map[latest.name.weekday()]
         data_date = latest.name.strftime('%Y-%m-%d')
-        st.markdown(f"#### 📅 데이터 기준일: <span class='date-badge'>{data_date} ({weekday_str}) 장마감</span>", unsafe_allow_html=True)
+        
+        # [수정] 데이터 기준일 폰트 축소 (######)
+        st.markdown(f"###### 📅 데이터 기준일: <span class='date-badge'>{data_date} ({weekday_str}) 장마감</span>", unsafe_allow_html=True)
 
         res_today, res_prev, changes, actions = analyzer.analyze_all(data)
         
@@ -302,13 +293,13 @@ def main():
         st.markdown("### 💼 Portfolio Composition")
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.metric("TQQQ Allocation", f"{res_today['final_tqqq']:.1%}", f"{changes['tqqq']:+.1%}")
+            st.metric("TQQQ", f"{res_today['final_tqqq']:.1%}", f"{changes['tqqq']:+.1%}")
             st.progress(res_today['final_tqqq'])
         with c2:
-            st.metric("GLD Allocation", f"{res_today['final_gld']:.1%}", f"{changes['gld']:+.1%}")
+            st.metric("GLD", f"{res_today['final_gld']:.1%}", f"{changes['gld']:+.1%}")
             st.progress(res_today['final_gld'])
         with c3:
-            st.metric("Cash Allocation", f"{res_today['final_cash']:.1%}", "")
+            st.metric("Cash", f"{res_today['final_cash']:.1%}", "")
             st.progress(res_today['final_cash'])
 
         # 3. Strategy Monitor
@@ -326,7 +317,6 @@ def main():
                 current_dev = latest[f'Deviation_{ma}']
                 is_active = name in res_today['active_error_strats']
                 
-                # 진행률 시각화
                 if current_dev > 0: progress = 0.0
                 else:
                     if current_dev <= threshold: progress = 1.0
@@ -349,7 +339,6 @@ def main():
                             log_info = res_today['error_logs'][name]
                             remaining = log_info['remaining_trading_days']
                             
-                            # 예상 종료일 계산 (영업일 기준 근사치: 주말 고려 1.4배수 적용)
                             est_days = int(remaining * 1.45) 
                             target_date = datetime.now() + timedelta(days=est_days)
                             
