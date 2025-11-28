@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v4.2",
+    page_title="TQQQ/GLD Sniper v4.3",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -24,20 +24,21 @@ st.markdown("""
         background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
     }
     div[data-testid="stMetricValue"] {
-        font-size: 20px; /* 메트릭 폰트도 살짝 줄임 */
+        font-size: 20px;
     }
     .date-badge {
         background-color: #262730;
-        padding: 2px 6px; /* 배지 패딩 줄임 */
+        padding: 2px 6px;
         border-radius: 5px;
         font-weight: bold;
         color: #00CC99;
         border: 1px solid #00CC99;
-        font-size: 0.9em; /* 배지 글자 크기 줄임 */
+        font-size: 0.9em;
     }
     .status-cash { color: #FF4B4B; font-weight: bold; }
     .status-gld { color: #FFD700; font-weight: bold; }
     .status-active { color: #00CC99; font-weight: bold; }
+    .status-trend { color: #3366FF; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -45,7 +46,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v4.2 (모바일 UI 최적화: 폰트 축소)"""
+    """실시간 투자 신호 분석기 - v4.3 (매수 전략 추세 승계 로직 적용)"""
 
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
@@ -133,20 +134,47 @@ class RealTimeInvestmentAnalyzer:
                     'trigger_date': idx
                 }
 
-        is_active = remaining_days > 0
+        # [수정] 종료 조건 고도화 (매수/매도 공통)
+        is_period_active = remaining_days > 0
+        is_extended_active = False # 기간 만료 후 조건부 연장 여부
+        
+        if not is_period_active and last_trigger_info:
+            today_row = data.iloc[-1]
+            price_now = today_row['TQQQ_Close']
+            ma_val = today_row[f'MA_{ma_period}']
+            
+            if strategy_type == 'error_buy':
+                # 매수 전략 종료 시: 현재가가 MA보다 높으면 '추세 보유'로 연장
+                if price_now > ma_val:
+                    is_extended_active = True
+                    
+            elif strategy_type == 'optimized_sell':
+                # 매도 전략 종료 시: 현재가가 MA보다 낮으면 '현금/GLD 관망'으로 연장 (기존 로직)
+                if price_now < ma_val:
+                    is_extended_active = True
+        
+        # 최종 Active 상태 (기간 내 OR 연장됨)
+        final_active = is_period_active or is_extended_active
         
         final_details = {}
         if last_trigger_info:
             today = data.index[-1]
             days_ago_calendar = (today - last_trigger_info['trigger_date']).days
+            
+            status_code = 'normal'
+            if is_period_active: status_code = 'period_active'
+            elif is_extended_active: status_code = 'extended'
+            else: status_code = 'finished'
+
             final_details = {
                 'trigger_deviation': last_trigger_info['trigger_deviation'],
                 'days_ago': days_ago_calendar,
                 'trigger_date': last_trigger_info['trigger_date'],
-                'remaining_trading_days': remaining_days
+                'remaining_trading_days': remaining_days,
+                'status_code': status_code
             }
 
-        return is_active, remaining_days, final_details
+        return final_active, remaining_days, final_details
 
     def analyze_portfolio(self, data, target_idx=None):
         if target_idx is not None:
@@ -166,7 +194,7 @@ class RealTimeInvestmentAnalyzer:
         base_gld = 1 - base_tqqq
         base_cash = 0
         
-        # 2. 매수 전략
+        # 2. 매수 전략 (추세 승계 적용)
         active_error_strats, error_logs = [], {}
         for name, params in self.error_rate_strategies.items():
             active, remaining, details = self.check_signal_with_simulation(analysis_data, 'error_buy', params)
@@ -175,7 +203,7 @@ class RealTimeInvestmentAnalyzer:
                 error_logs[name] = details
         error_adj = len(active_error_strats) * 0.25
         
-        # 3. 매도 전략
+        # 3. 매도 전략 (방어 승계 적용)
         active_sell_cash = []
         active_sell_gld = []
         sell_logs = {}
@@ -186,17 +214,12 @@ class RealTimeInvestmentAnalyzer:
             if details:
                 sell_logs[name] = details
             
+            # Active 상태 분석 (기간 내 vs 연장)
             if active:
-                active_sell_cash.append(name)
-            elif details:
-                ma_val = target_data[f"MA_{params['ma_period']}"]
-                current_price = target_data["TQQQ_Close"]
-                
-                if current_price < ma_val:
-                    active_sell_gld.append(name)
-                    sell_logs[name]['status'] = 'extended_gld'
-                else:
-                    sell_logs[name]['status'] = 'finished'
+                if details['status_code'] == 'period_active':
+                    active_sell_cash.append(name) # 기간 내: 현금
+                elif details['status_code'] == 'extended':
+                    active_sell_gld.append(name) # 연장: GLD 방어
 
         opt_cash_adj = len(active_sell_cash) * 0.25
         opt_gld_adj = len(active_sell_gld) * 0.25
@@ -251,10 +274,9 @@ class RealTimeInvestmentAnalyzer:
 # 3. 메인 실행 함수
 # -----------------------------------------------------------
 def main():
-    # [수정] 타이틀 영역을 st.title 대신 st.markdown(h3)로 작게 변경
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.markdown("### 🎯 TQQQ Sniper v4.2")
+        st.markdown("### 🎯 TQQQ Sniper v4.3")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
@@ -270,8 +292,6 @@ def main():
         day_map = {0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'}
         weekday_str = day_map[latest.name.weekday()]
         data_date = latest.name.strftime('%Y-%m-%d')
-        
-        # [수정] 데이터 기준일 폰트 축소 (######)
         st.markdown(f"###### 📅 데이터 기준일: <span class='date-badge'>{data_date} ({weekday_str}) 장마감</span>", unsafe_allow_html=True)
 
         res_today, res_prev, changes, actions = analyzer.analyze_all(data)
@@ -308,7 +328,7 @@ def main():
         
         tab1, tab2, tab3 = st.tabs(["📉 매수 전략 (Buy)", "📈 매도 전략 (Sell)", "📊 시장 차트"])
         
-        # Tab 1: 매수 전략
+        # Tab 1: 매수 전략 (수정됨)
         with tab1:
             st.markdown(f"**조정 비중: {res_today['error_adj']:.1%} (GLD → TQQQ)**")
             for name, params in analyzer.error_rate_strategies.items():
@@ -317,6 +337,7 @@ def main():
                 current_dev = latest[f'Deviation_{ma}']
                 is_active = name in res_today['active_error_strats']
                 
+                # 진행률
                 if current_dev > 0: progress = 0.0
                 else:
                     if current_dev <= threshold: progress = 1.0
@@ -337,14 +358,19 @@ def main():
                     with col_val:
                         if is_active:
                             log_info = res_today['error_logs'][name]
-                            remaining = log_info['remaining_trading_days']
+                            status = log_info['status_code']
                             
-                            est_days = int(remaining * 1.45) 
-                            target_date = datetime.now() + timedelta(days=est_days)
-                            
-                            st.markdown("<span class='status-active'>✅ 진입 완료</span>", unsafe_allow_html=True)
-                            st.markdown(f"⏳ **{remaining} 거래일 남음**")
-                            st.caption(f"(예상: {target_date.strftime('%m-%d')} 경)")
+                            if status == 'period_active':
+                                remaining = log_info['remaining_trading_days']
+                                est_days = int(remaining * 1.45) 
+                                target_date = datetime.now() + timedelta(days=est_days)
+                                st.markdown("<span class='status-active'>✅ 진입 완료</span>", unsafe_allow_html=True)
+                                st.markdown(f"⏳ **{remaining} 거래일 남음**")
+                                st.caption(f"(예상: {target_date.strftime('%m-%d')} 경)")
+                            elif status == 'extended':
+                                st.markdown("<span class='status-trend'>📈 추세 보유</span>", unsafe_allow_html=True)
+                                st.markdown(f"**현재가 > MA {ma}**")
+                                st.caption("기간 만료되었으나 상승세로 연장")
                         else:
                             gap = current_dev - threshold
                             if gap > 0: st.markdown(f"📉 **-{gap:.1f}%p** 남음")
@@ -392,10 +418,8 @@ def main():
                         if is_cash_mode:
                             log_info = res_today['sell_logs'][name]
                             remaining = log_info['remaining_trading_days']
-                            
                             est_days = int(remaining * 1.45)
                             target_date = datetime.now() + timedelta(days=est_days)
-                            
                             st.markdown("<span class='status-cash'>🚨 매도 (현금)</span>", unsafe_allow_html=True)
                             st.markdown(f"⏳ **{remaining} 거래일 남음**")
                             st.caption(f"(예상: {target_date.strftime('%m-%d')} 경)")
@@ -403,6 +427,7 @@ def main():
                         elif is_gld_mode:
                             st.markdown("<span class='status-gld'>🛡️ 방어 (GLD)</span>", unsafe_allow_html=True)
                             st.markdown(f"📉 **MA {ma} 하회중**")
+                            st.caption("기간 만료되었으나 하락세로 방어")
                             
                         else:
                             gap = target - current_dev
