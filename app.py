@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ/GLD Sniper v4.5",
+    page_title="TQQQ/GLD Sniper v4.6",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -35,6 +35,8 @@ st.markdown("""
         border: 1px solid #00CC99;
         font-size: 0.9em;
     }
+    .status-cash { color: #FF4B4B; font-weight: bold; }
+    .status-active { color: #00CC99; font-weight: bold; }
     .status-aborted { color: #FF4B4B; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
@@ -43,7 +45,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v4.5 (기본 전략 변화 시 특수 전략 강제 종료)"""
+    """실시간 투자 신호 분석기 - v4.6 (기본 전략 하락장 비중 계산 오류 수정)"""
 
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
@@ -101,55 +103,43 @@ class RealTimeInvestmentAnalyzer:
         return df.dropna()
 
     def calculate_base_allocation_series(self, data):
-        """
-        [NEW] 기본 전략의 비중 변화를 전체 기간에 대해 미리 계산
-        - 목적: 기본 전략의 포지션 변경 시점(Change Point)을 감지하기 위함
-        """
-        # 1. Bullish/Bearish 계산
+        """기본 전략 변화 감지용 (수정된 비중 계산 로직 적용)"""
         is_bullish = data['%K'] > data['%D']
         
-        # 2. MA 시그널 계산 (Vectorized)
         ma_signals = pd.DataFrame(index=data.index)
         for ma in self.ma_periods:
             ma_signals[ma] = (data['TQQQ_Close'] > data[f'MA_{ma}']).astype(int)
             
-        # 3. 비중 계산
-        # Bullish: 전체 MA 점수 합산 * 0.25
+        # [Bullish] 4개 MA 균등 분배 (개당 25%)
         bull_alloc = ma_signals.sum(axis=1) * 0.25
         
-        # Bearish: (MA20 + MA45) * 0.5 * 0.5 = (MA20 + MA45) * 0.25
-        bear_alloc = (ma_signals[20] + ma_signals[45]) * 0.25
+        # [Bearish] MA20, MA45만 사용 (개당 50%) -> 수정됨
+        bear_alloc = (ma_signals[20] + ma_signals[45]) * 0.5
         
         base_alloc = pd.Series(np.where(is_bullish, bull_alloc, bear_alloc), index=data.index)
         
-        # 4. 변화 감지 (diff가 0이 아니면 변화 발생)
-        # fillna(0)으로 첫날은 변화 없는 것으로 처리
+        # 변화 감지
         base_change_mask = base_alloc.diff().fillna(0) != 0
-        
         return base_change_mask
 
     def check_signal_with_simulation(self, data, strategy_type, params, base_change_mask):
-        """
-        [수정] 시뮬레이션 엔진
-        - 기본 전략 변화(base_change_mask) 감지 시 강제 종료 로직 추가
-        """
+        """시뮬레이션 엔진 (기본 전략 변화 시 강제 종료)"""
         target_days = params['holding_days'] if strategy_type == 'error_buy' else params['sell_days']
         ma_period = params['ma_period']
         threshold = params['deviation_threshold'] if strategy_type == 'error_buy' else params['error_rate']
 
         remaining_days = 0 
         last_trigger_info = {}
-        aborted_today = False # 오늘 강제 종료되었는지 여부
+        aborted_today = False
         
         for idx, row in data.iterrows():
             # 1. 기본 전략 변화 체크 (우선순위 최상)
             if remaining_days > 0:
                 if base_change_mask[idx]:
-                    remaining_days = 0 # 강제 종료
-                    # 만약 오늘 날짜에 강제 종료가 일어났다면 기록
+                    remaining_days = 0 
                     if idx == data.index[-1]:
                         aborted_today = True
-                    continue # 이번 턴은 종료 처리만 하고 넘어감
+                    continue 
 
             # 2. 하루 차감
             if remaining_days > 0:
@@ -175,7 +165,7 @@ class RealTimeInvestmentAnalyzer:
                     'trigger_deviation': deviation,
                     'trigger_date': idx
                 }
-                aborted_today = False # 다시 활성화되었으므로 abort 상태 해제
+                aborted_today = False
 
         is_active = remaining_days > 0
         
@@ -189,7 +179,7 @@ class RealTimeInvestmentAnalyzer:
                 'days_ago': days_ago_calendar,
                 'trigger_date': last_trigger_info['trigger_date'],
                 'remaining_trading_days': remaining_days,
-                'aborted_today': aborted_today # UI 표시용
+                'aborted_today': aborted_today
             }
 
         return is_active, remaining_days, final_details
@@ -209,8 +199,12 @@ class RealTimeInvestmentAnalyzer:
         is_bullish = target_data['%K'] > target_data['%D']
         ma_signals = {p: target_data['TQQQ_Close'] > target_data[f'MA_{p}'] for p in self.ma_periods}
         
-        if is_bullish: base_tqqq = sum(ma_signals.values()) * 0.25
-        else: base_tqqq = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5 * 0.5
+        if is_bullish: 
+            # 상승 추세: 4개 MA 각각 25%
+            base_tqqq = sum(ma_signals.values()) * 0.25
+        else: 
+            # [수정] 하락 추세: MA20, MA45 각각 50%
+            base_tqqq = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5
         
         base_gld = 1 - base_tqqq
         base_cash = 0
@@ -221,7 +215,7 @@ class RealTimeInvestmentAnalyzer:
             active, remaining, details = self.check_signal_with_simulation(analysis_data, 'error_buy', params, base_change_mask)
             if active:
                 active_error_strats.append(name)
-            if details: # 로그는 활성 여부 상관없이 있으면 저장
+            if details:
                 error_logs[name] = details
         error_adj = len(active_error_strats) * 0.25
         
@@ -282,7 +276,7 @@ class RealTimeInvestmentAnalyzer:
 def main():
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.markdown("### 🎯 TQQQ Sniper v4.5")
+        st.markdown("### 🎯 TQQQ Sniper v4.6")
     with col2:
         if st.button("🔄 Refresh", type="primary"):
             st.cache_data.clear()
