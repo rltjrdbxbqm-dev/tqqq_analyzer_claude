@@ -1,443 +1,537 @@
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import plotly.graph_objects as go
-from pandas.tseries.offsets import BusinessDay
-import warnings
-warnings.filterwarnings('ignore')
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, RefreshCw, Zap, Shield, DollarSign, Activity, ChevronRight, Clock, Target, AlertTriangle, CheckCircle, XCircle, BarChart3, Layers } from 'lucide-react';
 
-# -----------------------------------------------------------
-# 1. 페이지 설정 및 CSS 스타일링
-# -----------------------------------------------------------
-st.set_page_config(
-    page_title="TQQQ/GLD Sniper v4.6",
-    page_icon="🎯",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+// 시뮬레이션 데이터
+const mockData = {
+  dataDate: '2025-06-02',
+  weekday: '월',
+  tqqq: { price: 78.42, change: 2.34 },
+  gld: { price: 242.18, change: -0.52 },
+  portfolio: {
+    tqqq: 0.75,
+    gld: 0.25,
+    cash: 0.0,
+    prevTqqq: 0.50,
+    prevGld: 0.50,
+  },
+  isBullish: true,
+  stochastic: { k: 72.4, d: 68.1 },
+  deviations: {
+    ma20: 5.2,
+    ma45: 8.7,
+    ma151: 15.3,
+    ma212: 22.1,
+  },
+  buyStrategies: [
+    { name: 'MA 20', threshold: -12, current: 5.2, active: false, remainingDays: 0, triggerDate: null },
+    { name: 'MA 45', threshold: -11, current: 8.7, active: false, remainingDays: 0, triggerDate: null },
+    { name: 'MA 151', threshold: -21, current: 15.3, active: true, remainingDays: 5, triggerDate: '05-28' },
+    { name: 'MA 212', threshold: -15, current: 22.1, active: false, remainingDays: 0, triggerDate: null },
+  ],
+  sellStrategies: [
+    { name: 'Opt MA 45', threshold: 33, current: 8.7, active: false, remainingDays: 0, dependency: null, depMet: true },
+    { name: 'Opt MA 151', threshold: 55, current: 15.3, active: false, remainingDays: 0, dependency: 'MA 20', depMet: true },
+    { name: 'Opt MA 212', threshold: 55, current: 22.1, active: true, remainingDays: 8, dependency: 'MA 45', depMet: true, triggerDate: '05-25' },
+  ],
+  actions: [
+    { type: 'buy', asset: 'TQQQ', amount: 0.25 }
+  ]
+};
 
-st.markdown("""
-<style>
-    .stProgress > div > div > div > div {
-        background-image: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+export default function TQQQSniperDashboard() {
+  const [data, setData] = useState(mockData);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('buy');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1500);
+  };
+
+  const getProgressColor = (progress, type) => {
+    if (type === 'buy') {
+      if (progress >= 1) return 'from-emerald-500 to-cyan-400';
+      if (progress >= 0.7) return 'from-amber-500 to-orange-400';
+      return 'from-slate-600 to-slate-500';
+    } else {
+      if (progress >= 1) return 'from-rose-500 to-pink-400';
+      if (progress >= 0.7) return 'from-amber-500 to-orange-400';
+      return 'from-slate-600 to-slate-500';
     }
-    div[data-testid="stMetricValue"] {
-        font-size: 20px;
-    }
-    .date-badge {
-        background-color: #262730;
-        padding: 2px 6px;
-        border-radius: 5px;
-        font-weight: bold;
-        color: #00CC99;
-        border: 1px solid #00CC99;
-        font-size: 0.9em;
-    }
-    .status-cash { color: #FF4B4B; font-weight: bold; }
-    .status-active { color: #00CC99; font-weight: bold; }
-    .status-aborted { color: #FF4B4B; font-weight: bold; }
-</style>
-""", unsafe_allow_html=True)
+  };
 
-# -----------------------------------------------------------
-# 2. 분석기 클래스 정의
-# -----------------------------------------------------------
-class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v4.6 (기본 전략 하락장 비중 계산 오류 수정)"""
+  const calculateBuyProgress = (current, threshold) => {
+    if (current > 0) return 0;
+    if (current <= threshold) return 1;
+    return Math.min(1, Math.abs(current) / Math.abs(threshold));
+  };
 
-    def __init__(self):
-        self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
-        self.ma_periods = [20, 45, 151, 212]
-        
-        self.error_rate_strategies = {
-            'TQQQ_Strategy_1': {'ma_period': 20, 'deviation_threshold': -12, 'holding_days': 8},
-            'TQQQ_Strategy_2': {'ma_period': 45, 'deviation_threshold': -11, 'holding_days': 5},
-            'TQQQ_Strategy_3': {'ma_period': 151, 'deviation_threshold': -21, 'holding_days': 8},
-            'TQQQ_Strategy_4': {'ma_period': 212, 'deviation_threshold': -15, 'holding_days': 4},
-        }
-        
-        self.optimized_strategies = {
-            'TQQQ_Optimized_1': {'ma_period': 45, 'error_rate': 33, 'sell_days': 11},
-            'TQQQ_Optimized_2': {'ma_period': 151, 'error_rate': 55, 'sell_days': 13, 'depends_on': 20},
-            'TQQQ_Optimized_3': {'ma_period': 212, 'error_rate': 55, 'sell_days': 12, 'depends_on': 45},
-        }
+  const calculateSellProgress = (current, threshold) => {
+    if (current < 0) return 0;
+    if (current >= threshold) return 1;
+    return Math.min(1, current / threshold);
+  };
 
-    @st.cache_data(ttl=300)
-    def get_latest_data(_self, days_back=400):
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days_back)
-        try:
-            tickers = ['TQQQ', 'GLD']
-            data = {}
-            for ticker in tickers:
-                stock_data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-                if isinstance(stock_data.columns, pd.MultiIndex):
-                    stock_data.columns = stock_data.columns.droplevel(1)
-                data[ticker] = stock_data
+  return (
+    <div className="min-h-screen bg-[#0a0b0f] text-white overflow-x-hidden" style={{ fontFamily: "'JetBrains Mono', 'SF Mono', monospace" }}>
+      {/* 배경 효과 */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
+        {/* 그리드 패턴 */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                             linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px'
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-6">
+        {/* 헤더 */}
+        <header className={`mb-8 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-xl blur-lg opacity-50" />
+                <div className="relative bg-gradient-to-br from-cyan-500 to-emerald-500 p-3 rounded-xl">
+                  <Target className="w-6 h-6 text-black" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  <span className="bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                    TQQQ SNIPER
+                  </span>
+                  <span className="text-slate-500 text-sm ml-2 font-normal">v4.6</span>
+                </h1>
+                <p className="text-slate-500 text-xs tracking-wider">REAL-TIME SIGNAL ANALYSIS</p>
+              </div>
+            </div>
             
-            combined_data = pd.DataFrame()
-            for ticker in tickers:
-                for col in ['Open', 'High', 'Low', 'Close']:
-                    if col in data[ticker].columns:
-                        combined_data[f'{ticker}_{col}'] = data[ticker][col]
-            
-            return combined_data.dropna()
-        except Exception as e:
-            st.error(f"데이터 오류: {e}")
-            return None
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                <div className={`w-2 h-2 rounded-full ${data.isBullish ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50' : 'bg-rose-400 shadow-lg shadow-rose-400/50'}`} />
+                <span className="text-xs text-slate-400">
+                  {data.isBullish ? 'BULLISH' : 'BEARISH'} REGIME
+                </span>
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={isLoading}
+                className="group relative p-3 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl border border-slate-700/50 hover:border-cyan-500/30 transition-all duration-300"
+              >
+                <RefreshCw className={`w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
 
-    def calculate_technical_indicators(self, data):
-        df = data.copy()
-        period, k_p, d_p = self.stoch_config.values()
-        
-        df['Highest_High'] = df['TQQQ_High'].rolling(window=period).max()
-        df['Lowest_Low'] = df['TQQQ_Low'].rolling(window=period).min()
-        df['%K'] = ((df['TQQQ_Close'] - df['Lowest_Low']) / (df['Highest_High'] - df['Lowest_Low']) * 100).rolling(window=k_p).mean()
-        df['%D'] = df['%K'].rolling(window=d_p).mean()
-        
-        for ma in self.ma_periods:
-            df[f'MA_{ma}'] = df['TQQQ_Close'].rolling(window=ma).mean()
-            df[f'Deviation_{ma}'] = ((df['TQQQ_Close'] - df[f'MA_{ma}']) / df[f'MA_{ma}']) * 100
-        return df.dropna()
+          {/* 날짜 배지 */}
+          <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/30 rounded-lg border border-slate-700/30 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+            <Clock className="w-3 h-3 text-cyan-400" />
+            <span className="text-xs text-slate-400">데이터 기준:</span>
+            <span className="text-xs font-semibold text-cyan-400">{data.dataDate} ({data.weekday}) 장마감</span>
+          </div>
+        </header>
 
-    def calculate_base_allocation_series(self, data):
-        """기본 전략 변화 감지용 (수정된 비중 계산 로직 적용)"""
-        is_bullish = data['%K'] > data['%D']
-        
-        ma_signals = pd.DataFrame(index=data.index)
-        for ma in self.ma_periods:
-            ma_signals[ma] = (data['TQQQ_Close'] > data[f'MA_{ma}']).astype(int)
-            
-        # [Bullish] 4개 MA 균등 분배 (개당 25%)
-        bull_alloc = ma_signals.sum(axis=1) * 0.25
-        
-        # [Bearish] MA20, MA45만 사용 (개당 50%) -> 수정됨
-        bear_alloc = (ma_signals[20] + ma_signals[45]) * 0.5
-        
-        base_alloc = pd.Series(np.where(is_bullish, bull_alloc, bear_alloc), index=data.index)
-        
-        # 변화 감지
-        base_change_mask = base_alloc.diff().fillna(0) != 0
-        return base_change_mask
+        {/* 액션 카드 */}
+        <section className={`mb-6 transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          {data.actions.length > 0 ? (
+            data.actions.map((action, idx) => (
+              <div 
+                key={idx}
+                className={`relative overflow-hidden rounded-2xl p-1 ${
+                  action.type === 'buy' 
+                    ? 'bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-emerald-500/20' 
+                    : 'bg-gradient-to-r from-rose-500/20 via-pink-500/20 to-rose-500/20'
+                }`}
+              >
+                <div className="relative bg-[#0d0e12] rounded-xl p-5">
+                  <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+                    {action.type === 'buy' ? (
+                      <TrendingUp className="w-full h-full text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-full h-full text-rose-400" />
+                    )}
+                  </div>
+                  
+                  <div className="relative flex items-center gap-4">
+                    <div className={`p-3 rounded-xl ${
+                      action.type === 'buy' 
+                        ? 'bg-emerald-500/20 text-emerald-400' 
+                        : 'bg-rose-500/20 text-rose-400'
+                    }`}>
+                      {action.type === 'buy' ? <Zap className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <p className="text-slate-400 text-sm mb-1">Action Required</p>
+                      <p className={`text-xl font-bold ${
+                        action.type === 'buy' ? 'text-emerald-400' : 'text-rose-400'
+                      }`}>
+                        {action.asset} {(action.amount * 100).toFixed(0)}% {action.type === 'buy' ? '매수' : '매도'}
+                      </p>
+                    </div>
+                    
+                    <ChevronRight className={`w-6 h-6 ${
+                      action.type === 'buy' ? 'text-emerald-400' : 'text-rose-400'
+                    }`} />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="relative overflow-hidden rounded-2xl bg-slate-800/20 border border-slate-700/30 p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-slate-700/30 text-slate-400">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm mb-1">No Action Required</p>
+                  <p className="text-lg font-medium text-slate-300">오늘은 매매 없이 홀딩 ☕</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
 
-    def check_signal_with_simulation(self, data, strategy_type, params, base_change_mask):
-        """시뮬레이션 엔진 (기본 전략 변화 시 강제 종료)"""
-        target_days = params['holding_days'] if strategy_type == 'error_buy' else params['sell_days']
-        ma_period = params['ma_period']
-        threshold = params['deviation_threshold'] if strategy_type == 'error_buy' else params['error_rate']
+        {/* 포트폴리오 구성 */}
+        <section className={`mb-6 transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <h2 className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            PORTFOLIO COMPOSITION
+          </h2>
+          
+          <div className="grid grid-cols-3 gap-3">
+            {/* TQQQ */}
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/30 hover:border-cyan-500/30 transition-all duration-300 p-4">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-slate-500 font-medium">TQQQ</span>
+                  <span className={`text-xs font-semibold ${
+                    data.portfolio.tqqq > data.portfolio.prevTqqq ? 'text-emerald-400' : 
+                    data.portfolio.tqqq < data.portfolio.prevTqqq ? 'text-rose-400' : 'text-slate-400'
+                  }`}>
+                    {data.portfolio.tqqq > data.portfolio.prevTqqq ? '+' : ''}
+                    {((data.portfolio.tqqq - data.portfolio.prevTqqq) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <p className="text-3xl font-bold text-cyan-400 mb-3">
+                  {(data.portfolio.tqqq * 100).toFixed(0)}%
+                </p>
+                <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-1000"
+                    style={{ width: `${data.portfolio.tqqq * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
 
-        remaining_days = 0 
-        last_trigger_info = {}
-        aborted_today = False
-        
-        for idx, row in data.iterrows():
-            # 1. 기본 전략 변화 체크 (우선순위 최상)
-            if remaining_days > 0:
-                if base_change_mask[idx]:
-                    remaining_days = 0 
-                    if idx == data.index[-1]:
-                        aborted_today = True
-                    continue 
+            {/* GLD */}
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/30 hover:border-amber-500/30 transition-all duration-300 p-4">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-slate-500 font-medium">GLD</span>
+                  <span className={`text-xs font-semibold ${
+                    data.portfolio.gld > data.portfolio.prevGld ? 'text-emerald-400' : 
+                    data.portfolio.gld < data.portfolio.prevGld ? 'text-rose-400' : 'text-slate-400'
+                  }`}>
+                    {data.portfolio.gld > data.portfolio.prevGld ? '+' : ''}
+                    {((data.portfolio.gld - data.portfolio.prevGld) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <p className="text-3xl font-bold text-amber-400 mb-3">
+                  {(data.portfolio.gld * 100).toFixed(0)}%
+                </p>
+                <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-1000"
+                    style={{ width: `${data.portfolio.gld * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
 
-            # 2. 하루 차감
-            if remaining_days > 0:
-                remaining_days -= 1
-            
-            # 3. 신호 조건 확인
-            price_above_ma = row['TQQQ_Close'] > row[f'MA_{ma_period}']
-            deviation = row[f'Deviation_{ma_period}']
-            
-            condition = False
-            if strategy_type == 'error_buy':
-                condition = (not price_above_ma) and (deviation <= threshold)
-            else: 
-                is_disabled = False
-                if 'depends_on' in params and not (row['TQQQ_Close'] > row[f"MA_{params['depends_on']}"]):
-                    is_disabled = True
-                condition = (not is_disabled) and price_above_ma and (deviation >= threshold)
-            
-            # 4. 신호 발생 (리셋)
-            if condition:
-                remaining_days = target_days
-                last_trigger_info = {
-                    'trigger_deviation': deviation,
-                    'trigger_date': idx
-                }
-                aborted_today = False
+            {/* Cash */}
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/30 hover:border-slate-500/30 transition-all duration-300 p-4">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-slate-500 font-medium">CASH</span>
+                  <span className="text-xs font-semibold text-slate-400">-</span>
+                </div>
+                <p className="text-3xl font-bold text-slate-400 mb-3">
+                  {(data.portfolio.cash * 100).toFixed(0)}%
+                </p>
+                <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-slate-500 to-slate-400 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.max(data.portfolio.cash * 100, 0)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        is_active = remaining_days > 0
-        
-        final_details = {}
-        if last_trigger_info:
-            today = data.index[-1]
-            days_ago_calendar = (today - last_trigger_info['trigger_date']).days
-            
-            final_details = {
-                'trigger_deviation': last_trigger_info['trigger_deviation'],
-                'days_ago': days_ago_calendar,
-                'trigger_date': last_trigger_info['trigger_date'],
-                'remaining_trading_days': remaining_days,
-                'aborted_today': aborted_today
-            }
+        {/* 전략 모니터 */}
+        <section className={`transition-all duration-700 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <h2 className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            STRATEGY MONITOR
+          </h2>
 
-        return is_active, remaining_days, final_details
+          {/* 탭 네비게이션 */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveTab('buy')}
+              className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300 ${
+                activeTab === 'buy'
+                  ? 'bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-slate-800/30 text-slate-400 border border-slate-700/30 hover:border-slate-600/50'
+              }`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                매수 전략 (Buy)
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('sell')}
+              className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300 ${
+                activeTab === 'sell'
+                  ? 'bg-gradient-to-r from-rose-500/20 to-pink-500/20 text-rose-400 border border-rose-500/30'
+                  : 'bg-slate-800/30 text-slate-400 border border-slate-700/30 hover:border-slate-600/50'
+              }`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <TrendingDown className="w-4 h-4" />
+                매도 전략 (Sell)
+              </span>
+            </button>
+          </div>
 
-    def analyze_portfolio(self, data, target_idx=None):
-        if target_idx is not None:
-            analysis_data = data.iloc[:target_idx+1]
-        else:
-            analysis_data = data
-            
-        target_data = analysis_data.iloc[-1]
-        
-        # 0. 기본 전략 변화 마스크 계산
-        base_change_mask = self.calculate_base_allocation_series(analysis_data)
-        
-        # 1. 기본 전략
-        is_bullish = target_data['%K'] > target_data['%D']
-        ma_signals = {p: target_data['TQQQ_Close'] > target_data[f'MA_{p}'] for p in self.ma_periods}
-        
-        if is_bullish: 
-            # 상승 추세: 4개 MA 각각 25%
-            base_tqqq = sum(ma_signals.values()) * 0.25
-        else: 
-            # [수정] 하락 추세: MA20, MA45 각각 50%
-            base_tqqq = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5
-        
-        base_gld = 1 - base_tqqq
-        base_cash = 0
-        
-        # 2. 매수 전략 (기본전략 변화 감지 적용)
-        active_error_strats, error_logs = [], {}
-        for name, params in self.error_rate_strategies.items():
-            active, remaining, details = self.check_signal_with_simulation(analysis_data, 'error_buy', params, base_change_mask)
-            if active:
-                active_error_strats.append(name)
-            if details:
-                error_logs[name] = details
-        error_adj = len(active_error_strats) * 0.25
-        
-        # 3. 매도 전략 (기본전략 변화 감지 적용)
-        active_sell_cash = []
-        sell_logs = {}
-        for name, params in self.optimized_strategies.items():
-            active, remaining, details = self.check_signal_with_simulation(analysis_data, 'optimized_sell', params, base_change_mask)
-            if active:
-                active_sell_cash.append(name)
-            if details:
-                sell_logs[name] = details
-
-        opt_cash_adj = len(active_sell_cash) * 0.25
-        
-        final_tqqq, final_gld, final_cash = base_tqqq, base_gld, base_cash
-        
-        if error_adj > 0:
-            amt = min(final_gld, error_adj)
-            final_gld -= amt
-            final_tqqq += amt
-            
-        if opt_cash_adj > 0:
-            amt = min(final_tqqq, opt_cash_adj)
-            final_tqqq -= amt
-            final_cash += amt
-            
-        total = final_tqqq + final_gld + final_cash
-        if total > 0:
-            final_tqqq /= total; final_gld /= total; final_cash /= total
-            
-        return {
-            'final_tqqq': final_tqqq, 'final_gld': final_gld, 'final_cash': final_cash,
-            'base_tqqq': base_tqqq, 
-            'error_adj': error_adj, 
-            'opt_cash_adj': -opt_cash_adj, 
-            'active_error_strats': active_error_strats, 
-            'active_sell_cash': active_sell_cash,
-            'error_logs': error_logs, 'sell_logs': sell_logs,
-            'is_bullish': is_bullish
-        }
-
-    def analyze_all(self, data):
-        today = self.analyze_portfolio(data)
-        data_prev = data.iloc[:-1]
-        yesterday = self.analyze_portfolio(data_prev)
-        
-        changes = {'tqqq': today['final_tqqq'] - yesterday['final_tqqq'], 'gld': today['final_gld'] - yesterday['final_gld']}
-        actions = []
-        for asset, chg in changes.items():
-            if chg > 0.01: actions.append({'action': '매수', 'asset': asset.upper(), 'amt': chg})
-            elif chg < -0.01: actions.append({'action': '매도', 'asset': asset.upper(), 'amt': abs(chg)})
-        return today, yesterday, changes, actions
-
-# -----------------------------------------------------------
-# 3. 메인 실행 함수
-# -----------------------------------------------------------
-def main():
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        st.markdown("### 🎯 TQQQ Sniper v4.6")
-    with col2:
-        if st.button("🔄 Refresh", type="primary"):
-            st.cache_data.clear()
-            st.rerun()
-            
-    analyzer = RealTimeInvestmentAnalyzer()
-    data = analyzer.get_latest_data()
-    
-    if data is not None:
-        data = analyzer.calculate_technical_indicators(data)
-        latest = data.iloc[-1]
-        
-        day_map = {0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'}
-        weekday_str = day_map[latest.name.weekday()]
-        data_date = latest.name.strftime('%Y-%m-%d')
-        st.markdown(f"###### 📅 데이터 기준일: <span class='date-badge'>{data_date} ({weekday_str}) 장마감</span>", unsafe_allow_html=True)
-
-        res_today, res_prev, changes, actions = analyzer.analyze_all(data)
-        
-        # 1. Action Card
-        st.markdown("### 📢 Action Required")
-        if actions:
-            for a in actions:
-                if a['action'] == '매수':
-                    st.success(f"**🚀 {a['asset']} {a['amt']:.1%} 매수하세요**")
-                else:
-                    st.error(f"**📉 {a['asset']} {a['amt']:.1%} 매도하세요**")
-        else:
-            st.info("**☕ 오늘은 매매 없이 홀딩입니다.**")
-
-        st.markdown("---")
-
-        # 2. Portfolio Overview
-        st.markdown("### 💼 Portfolio Composition")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.metric("TQQQ", f"{res_today['final_tqqq']:.1%}", f"{changes['tqqq']:+.1%}")
-            st.progress(res_today['final_tqqq'])
-        with c2:
-            st.metric("GLD", f"{res_today['final_gld']:.1%}", f"{changes['gld']:+.1%}")
-            st.progress(res_today['final_gld'])
-        with c3:
-            st.metric("Cash", f"{res_today['final_cash']:.1%}", "")
-            st.progress(res_today['final_cash'])
-
-        # 3. Strategy Monitor
-        st.markdown("---")
-        st.subheader("🔍 Strategy Monitor")
-        
-        tab1, tab2, tab3 = st.tabs(["📉 매수 전략 (Buy)", "📈 매도 전략 (Sell)", "📊 시장 차트"])
-        
-        # Tab 1: 매수 전략
-        with tab1:
-            st.markdown(f"**조정 비중: {res_today['error_adj']:.1%} (GLD → TQQQ)**")
-            for name, params in analyzer.error_rate_strategies.items():
-                ma = params['ma_period']
-                threshold = params['deviation_threshold']
-                current_dev = latest[f'Deviation_{ma}']
-                is_active = name in res_today['active_error_strats']
-                
-                if current_dev > 0: progress = 0.0
-                else:
-                    if current_dev <= threshold: progress = 1.0
-                    else: progress = min(1.0, abs(current_dev) / abs(threshold))
-                
-                with st.container():
-                    col_name, col_prog, col_val = st.columns([2, 4, 2])
-                    with col_name:
-                        st.markdown(f"**MA {ma}**")
-                        if is_active:
-                            log_info = res_today['error_logs'][name]
-                            trigger_date_str = log_info['trigger_date'].strftime('%m-%d')
-                            st.caption(f"✅ 진입일: {trigger_date_str}")
-                        elif name in res_today['error_logs'] and res_today['error_logs'][name].get('aborted_today'):
-                             st.caption("🛑 기본전략 변화로 종료")
-                        else:
-                            st.caption("💤 대기중")
-                    with col_prog:
-                        st.progress(progress)
-                    with col_val:
-                        if is_active:
-                            log_info = res_today['error_logs'][name]
-                            remaining = log_info['remaining_trading_days']
-                            est_days = int(remaining * 1.45) 
-                            target_date = datetime.now() + timedelta(days=est_days)
-                            st.markdown("<span class='status-active'>✅ 진입 완료</span>", unsafe_allow_html=True)
-                            st.markdown(f"⏳ **{remaining} 거래일 남음**")
-                            st.caption(f"(예상: {target_date.strftime('%m-%d')} 경)")
-                        elif name in res_today['error_logs'] and res_today['error_logs'][name].get('aborted_today'):
-                            st.markdown("<span class='status-aborted'>🛑 강제 종료</span>", unsafe_allow_html=True)
-                            st.caption("기본전략 변경 감지")
-                        else:
-                            gap = current_dev - threshold
-                            if gap > 0: st.markdown(f"📉 **-{gap:.1f}%p** 남음")
-                            else: st.markdown("⚠️ **조건 대기**")
-                    st.divider()
-
-        # Tab 2: 매도 전략
-        with tab2:
-            st.markdown(f"**조정 비중: {abs(res_today['opt_cash_adj']):.1%} (TQQQ → Cash)**")
-            
-            for name, params in analyzer.optimized_strategies.items():
-                ma = params['ma_period']
-                target = params['error_rate']
-                current_dev = latest[f'Deviation_{ma}']
-                is_active = name in res_today['active_sell_cash']
-                
-                if current_dev < 0: progress = 0.0
-                else:
-                    if current_dev >= target: progress = 1.0
-                    else: progress = min(1.0, current_dev / target)
-                
-                dep_msg = ""
-                if 'depends_on' in params and not (latest['TQQQ_Close'] > latest[f"MA_{params['depends_on']}"]):
-                    dep_msg = "🚫 MA조건 미달"
-
-                with st.container():
-                    col_name, col_prog, col_val = st.columns([2, 4, 2])
-                    with col_name:
-                        st.markdown(f"**Opt MA {ma}**")
-                        if is_active:
-                            if name in res_today['sell_logs']:
-                                log_info = res_today['sell_logs'][name]
-                                trigger_date_str = log_info['trigger_date'].strftime('%m-%d')
-                                st.caption(f"🚨 매도일: {trigger_date_str}")
-                        elif name in res_today['sell_logs'] and res_today['sell_logs'][name].get('aborted_today'):
-                             st.caption("🛑 기본전략 변화로 종료")
-                        elif dep_msg: st.caption(dep_msg)
-                        else: st.caption("💤 대기중")
+          {/* 매수 전략 탭 */}
+          {activeTab === 'buy' && (
+            <div className="space-y-3">
+              <div className="px-4 py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 mb-4">
+                <span className="text-xs text-emerald-400">
+                  조정 비중: <span className="font-bold">25.0%</span> (GLD → TQQQ)
+                </span>
+              </div>
+              
+              {data.buyStrategies.map((strategy, idx) => {
+                const progress = calculateBuyProgress(strategy.current, strategy.threshold);
+                return (
+                  <div 
+                    key={idx}
+                    className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${
+                      strategy.active 
+                        ? 'bg-emerald-500/5 border-emerald-500/30' 
+                        : 'bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50'
+                    }`}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold ${
+                            strategy.active 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'bg-slate-700/50 text-slate-400'
+                          }`}>
+                            {strategy.name.split(' ')[1]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{strategy.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {strategy.active 
+                                ? `✅ 진입일: ${strategy.triggerDate}` 
+                                : '💤 대기중'}
+                            </p>
+                          </div>
+                        </div>
                         
-                    with col_prog:
-                        st.progress(progress)
+                        <div className="text-right">
+                          {strategy.active ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/20 rounded-lg text-emerald-400 text-xs font-semibold">
+                                <CheckCircle className="w-3 h-3" />
+                                진입 완료
+                              </span>
+                              <p className="text-xs text-slate-400 mt-1">
+                                ⏳ {strategy.remainingDays} 거래일 남음
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-xs text-slate-400">
+                                현재: <span className="text-slate-300">{strategy.current.toFixed(1)}%</span>
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                목표: {strategy.threshold}%
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* 프로그레스 바 */}
+                      <div className="h-2 bg-slate-700/30 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${getProgressColor(progress, 'buy')} rounded-full transition-all duration-700`}
+                          style={{ width: `${progress * 100}%` }}
+                        />
+                      </div>
+                      
+                      {!strategy.active && strategy.current > 0 && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          📉 <span className="text-amber-400">-{(strategy.current - strategy.threshold).toFixed(1)}%p</span> 남음
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 매도 전략 탭 */}
+          {activeTab === 'sell' && (
+            <div className="space-y-3">
+              <div className="px-4 py-2 bg-rose-500/10 rounded-lg border border-rose-500/20 mb-4">
+                <span className="text-xs text-rose-400">
+                  조정 비중: <span className="font-bold">25.0%</span> (TQQQ → Cash)
+                </span>
+              </div>
+              
+              {data.sellStrategies.map((strategy, idx) => {
+                const progress = calculateSellProgress(strategy.current, strategy.threshold);
+                const isDisabled = strategy.dependency && !strategy.depMet;
+                
+                return (
+                  <div 
+                    key={idx}
+                    className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${
+                      strategy.active 
+                        ? 'bg-rose-500/5 border-rose-500/30' 
+                        : isDisabled
+                          ? 'bg-slate-900/50 border-slate-800/50 opacity-60'
+                          : 'bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50'
+                    }`}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold ${
+                            strategy.active 
+                              ? 'bg-rose-500/20 text-rose-400' 
+                              : 'bg-slate-700/50 text-slate-400'
+                          }`}>
+                            {strategy.name.split(' ')[2]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{strategy.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {strategy.active 
+                                ? `🚨 매도일: ${strategy.triggerDate}` 
+                                : isDisabled
+                                  ? `🚫 ${strategy.dependency} 조건 미달`
+                                  : '💤 대기중'}
+                            </p>
+                          </div>
+                        </div>
                         
-                    with col_val:
-                        if is_active:
-                            log_info = res_today['sell_logs'][name]
-                            remaining = log_info['remaining_trading_days']
-                            est_days = int(remaining * 1.45)
-                            target_date = datetime.now() + timedelta(days=est_days)
-                            st.markdown("<span class='status-cash'>🚨 매도 (현금)</span>", unsafe_allow_html=True)
-                            st.markdown(f"⏳ **{remaining} 거래일 남음**")
-                            st.caption(f"(예상: {target_date.strftime('%m-%d')} 경)")
-                        elif name in res_today['sell_logs'] and res_today['sell_logs'][name].get('aborted_today'):
-                            st.markdown("<span class='status-aborted'>🛑 강제 종료</span>", unsafe_allow_html=True)
-                            st.caption("기본전략 변경 감지")
-                        else:
-                            gap = target - current_dev
-                            if gap > 0: st.markdown(f"📈 **+{gap:.1f}%p** 남음")
-                            else: st.markdown("⚠️ **조건 대기**")
-                    st.divider()
+                        <div className="text-right">
+                          {strategy.active ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-500/20 rounded-lg text-rose-400 text-xs font-semibold">
+                                <AlertTriangle className="w-3 h-3" />
+                                매도 (현금)
+                              </span>
+                              <p className="text-xs text-slate-400 mt-1">
+                                ⏳ {strategy.remainingDays} 거래일 남음
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-xs text-slate-400">
+                                현재: <span className="text-slate-300">{strategy.current.toFixed(1)}%</span>
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                목표: +{strategy.threshold}%
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* 프로그레스 바 */}
+                      <div className="h-2 bg-slate-700/30 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${getProgressColor(progress, 'sell')} rounded-full transition-all duration-700`}
+                          style={{ width: `${progress * 100}%` }}
+                        />
+                      </div>
+                      
+                      {!strategy.active && !isDisabled && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          📈 <span className="text-amber-400">+{(strategy.threshold - strategy.current).toFixed(1)}%p</span> 남음
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-        # Tab 3: 차트
-        with tab3:
-            fig = go.Figure()
-            chart_data = data.iloc[-120:]
-            fig.add_trace(go.Candlestick(x=chart_data.index, open=chart_data['TQQQ_Open'], high=chart_data['TQQQ_High'], low=chart_data['TQQQ_Low'], close=chart_data['TQQQ_Close'], name='TQQQ'))
-            colors = ['#FF9900', '#00CC99', '#3366FF', '#FF33CC']
-            for i, ma in enumerate(analyzer.ma_periods):
-                fig.add_trace(go.Scatter(x=chart_data.index, y=chart_data[f'MA_{ma}'], name=f'MA {ma}', line=dict(color=colors[i], width=1)))
-            fig.update_layout(height=500, margin=dict(l=0,r=0,t=20,b=0), template="plotly_dark", xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig, use_container_width=True)
+        {/* Stochastic 인디케이터 */}
+        <section className={`mt-6 transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className="rounded-2xl bg-gradient-to-br from-slate-800/30 to-slate-900/30 border border-slate-700/30 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-violet-500/20 rounded-lg">
+                  <BarChart3 className="w-4 h-4 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Stochastic Oscillator (166, 57, 19)</p>
+                  <p className="text-sm font-medium">
+                    <span className="text-cyan-400">%K: {data.stochastic.k.toFixed(1)}</span>
+                    <span className="text-slate-500 mx-2">/</span>
+                    <span className="text-amber-400">%D: {data.stochastic.d.toFixed(1)}</span>
+                  </p>
+                </div>
+              </div>
+              <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                data.isBullish 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+              }`}>
+                {data.isBullish ? '📈 Bullish' : '📉 Bearish'}
+              </div>
+            </div>
+          </div>
+        </section>
 
-if __name__ == "__main__":
-    main()
+        {/* 푸터 */}
+        <footer className={`mt-8 text-center transition-all duration-700 delay-600 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+          <p className="text-xs text-slate-600">
+            Built with precision • Not financial advice
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+}
