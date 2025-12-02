@@ -110,12 +110,14 @@ st.markdown("""
     .regime-badge {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
+        gap: 6px;
+        padding: 6px 12px;
         border-radius: 10px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     
     .regime-bullish {
@@ -215,9 +217,10 @@ st.markdown("""
     }
     
     .action-text {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
     }
     
     .action-text-buy {
@@ -557,40 +560,47 @@ st.markdown("""
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.3), rgba(15, 23, 42, 0.3));
         border: 1px solid rgba(71, 85, 105, 0.3);
         border-radius: 16px;
-        padding: 16px 20px;
+        padding: 12px 16px;
         margin-top: 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 8px;
     }
     
     .stoch-info {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
     }
     
     .stoch-icon {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
         background: rgba(139, 92, 246, 0.2);
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
+        font-size: 16px;
     }
     
     .stoch-label {
         color: #64748b;
-        font-size: 11px;
+        font-size: 10px;
         margin-bottom: 2px;
+        white-space: nowrap;
     }
     
     .stoch-values {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
     }
     
     .stoch-k {
@@ -603,7 +613,7 @@ st.markdown("""
     
     .stoch-sep {
         color: #64748b;
-        margin: 0 8px;
+        margin: 0 4px;
     }
     
     /* 구분선 */
@@ -928,7 +938,7 @@ def render_action_card(actions):
                 <div class="action-icon action-icon-hold">🛡️</div>
                 <div class="action-content">
                     <div class="action-label">No Action Required</div>
-                    <div class="action-text action-text-hold">오늘은 매매 없이 홀딩 ☕</div>
+                    <div class="action-text action-text-hold">홀딩 유지 ☕</div>
                 </div>
             </div>
         </div>
@@ -1040,7 +1050,7 @@ def render_buy_strategy_card(name, params, latest, is_active, log_info, aborted)
         
         with col2:
             st.markdown(f"""
-            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA {ma}</div>
+            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA{ma} 이탈률</div>
             <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
             """, unsafe_allow_html=True)
         
@@ -1156,7 +1166,7 @@ def render_sell_strategy_card(name, params, latest, is_active, log_info, aborted
         
         with col2:
             st.markdown(f"""
-            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">Opt MA {ma}</div>
+            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA{ma} 이탈률</div>
             <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
             """, unsafe_allow_html=True)
         
@@ -1373,11 +1383,11 @@ def main():
             <div class="stoch-info">
                 <div class="stoch-icon">📊</div>
                 <div>
-                    <div class="stoch-label">Stochastic Oscillator (166, 57, 19)</div>
+                    <div class="stoch-label">Stochastic (166, 57, 19)</div>
                     <div class="stoch-values">
-                        <span class="stoch-k">%K: {latest['%K']:.1f}</span>
+                        <span class="stoch-k">%K {latest['%K']:.1f}</span>
                         <span class="stoch-sep">/</span>
-                        <span class="stoch-d">%D: {latest['%D']:.1f}</span>
+                        <span class="stoch-d">%D {latest['%D']:.1f}</span>
                     </div>
                 </div>
             </div>
