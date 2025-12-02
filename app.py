@@ -978,57 +978,105 @@ def render_buy_strategy_card(name, params, latest, is_active, log_info, aborted)
     else:
         progress = min(100, abs(current_dev) / abs(threshold) * 100)
     
-    icon_class = 'strategy-icon-active-buy' if is_active else 'strategy-icon-inactive'
-    card_class = 'strategy-card-active-buy' if is_active else ''
-    progress_class = 'strategy-progress-buy' if is_active or progress >= 70 else 'strategy-progress-inactive'
+    # 카드 스타일 결정
+    if is_active:
+        card_border = "border-left: 3px solid #10b981;"
+        card_bg = "background: rgba(16, 185, 129, 0.05);"
+    else:
+        card_border = "border-left: 3px solid #475569;"
+        card_bg = "background: rgba(30, 41, 59, 0.3);"
     
-    status_text = '💤 대기중'
+    # 상태 텍스트
     if is_active and log_info:
         trigger_date_str = log_info['trigger_date'].strftime('%m-%d')
         status_text = f"✅ 진입일: {trigger_date_str}"
+        status_color = "#10b981"
     elif aborted:
-        status_text = "🛑 기본전략 변화로 종료"
+        status_text = "🛑 강제종료"
+        status_color = "#ef4444"
+    else:
+        status_text = "💤 대기중"
+        status_color = "#64748b"
     
-    badge_html = ""
-    remaining_html = ""
+    # 배지 & 잔여일
+    badge_text = ""
+    remaining_text = ""
     if is_active and log_info:
         remaining = log_info['remaining_trading_days']
         est_days = int(remaining * 1.45)
         target_date = datetime.now() + timedelta(days=est_days)
-        badge_html = '<span class="strategy-badge strategy-badge-active">✓ 진입 완료</span>'
-        remaining_html = f'<div class="strategy-remaining">⏳ {remaining} 거래일 남음 (예상: {target_date.strftime("%m-%d")})</div>'
+        badge_text = "✓ 진입 완료"
+        remaining_text = f"⏳ {remaining}일 남음 (~{target_date.strftime('%m-%d')})"
     elif aborted:
-        badge_html = '<span class="strategy-badge strategy-badge-aborted">🛑 강제 종료</span>'
+        badge_text = "🛑 강제 종료"
     
-    gap_html = ""
+    # 갭 계산
+    gap_text = ""
     if not is_active and not aborted:
         if current_dev > 0:
             gap = current_dev - threshold
-            gap_html = f'<div class="strategy-gap">📉 <span class="strategy-gap-value">-{gap:.1f}%p</span> 남음</div>'
+            gap_text = f"📉 -{gap:.1f}%p 남음"
         else:
-            gap_html = '<div class="strategy-gap">⚠️ 조건 대기</div>'
+            gap_text = "⚠️ 조건 대기"
     
-    st.markdown(f"""
-    <div class="strategy-card {card_class}">
-        <div class="strategy-header">
-            <div class="strategy-info">
-                <div class="strategy-icon {icon_class}">{ma}</div>
-                <div>
-                    <div class="strategy-name">MA {ma}</div>
-                    <div class="strategy-status {'strategy-status-active' if is_active else ''}">{status_text}</div>
+    # 프로그레스 바 색상
+    if is_active:
+        prog_color = "linear-gradient(90deg, #10b981, #06b6d4)"
+    elif progress >= 70:
+        prog_color = "linear-gradient(90deg, #f59e0b, #fbbf24)"
+    else:
+        prog_color = "linear-gradient(90deg, #475569, #64748b)"
+    
+    with st.container():
+        col1, col2, col3 = st.columns([1, 3, 2])
+        
+        with col1:
+            st.markdown(f"""
+            <div style="width: 45px; height: 45px; background: {'rgba(16, 185, 129, 0.2)' if is_active else 'rgba(71, 85, 105, 0.3)'}; 
+                        border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+                        font-size: 14px; font-weight: 700; color: {'#10b981' if is_active else '#94a3b8'}; 
+                        font-family: 'JetBrains Mono', monospace;">{ma}</div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA {ma}</div>
+            <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            if badge_text:
+                badge_bg = "rgba(16, 185, 129, 0.2)" if is_active else "rgba(239, 68, 68, 0.2)"
+                badge_color = "#10b981" if is_active else "#ef4444"
+                st.markdown(f"""
+                <div style="text-align: right;">
+                    <span style="display: inline-block; padding: 4px 10px; background: {badge_bg}; 
+                                 border-radius: 6px; font-size: 11px; font-weight: 600; color: {badge_color}; 
+                                 font-family: 'JetBrains Mono', monospace;">{badge_text}</span>
                 </div>
-            </div>
-            <div style="text-align: right;">
-                {badge_html}
-                {remaining_html}
-            </div>
+                """, unsafe_allow_html=True)
+                if remaining_text:
+                    st.markdown(f"""
+                    <div style="text-align: right; color: #94a3b8; font-size: 11px; margin-top: 4px; 
+                                font-family: 'JetBrains Mono', monospace;">{remaining_text}</div>
+                    """, unsafe_allow_html=True)
+        
+        # 프로그레스 바
+        st.markdown(f"""
+        <div style="height: 6px; background: rgba(51, 65, 85, 0.5); border-radius: 3px; overflow: hidden; margin: 8px 0;">
+            <div style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 3px; transition: width 0.5s ease;"></div>
         </div>
-        <div class="strategy-progress">
-            <div class="strategy-progress-bar {progress_class}" style="width: {progress}%"></div>
-        </div>
-        {gap_html}
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+        # 갭 표시
+        if gap_text:
+            st.markdown(f"""
+            <div style="color: #64748b; font-size: 12px;">
+                {gap_text.split(' ')[0]} <span style="color: #f59e0b; font-weight: 600; font-family: 'JetBrains Mono', monospace;">{' '.join(gap_text.split(' ')[1:])}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
 
 def render_sell_strategy_card(name, params, latest, is_active, log_info, aborted):
@@ -1051,59 +1099,100 @@ def render_sell_strategy_card(name, params, latest, is_active, log_info, aborted
     else:
         progress = min(100, current_dev / threshold * 100)
     
-    icon_class = 'strategy-icon-active-sell' if is_active else 'strategy-icon-inactive'
-    card_class = 'strategy-card-active-sell' if is_active else ''
-    progress_class = 'strategy-progress-sell' if is_active or progress >= 70 else 'strategy-progress-inactive'
-    
-    status_text = '💤 대기중'
+    # 상태 텍스트
     if is_active and log_info:
         trigger_date_str = log_info['trigger_date'].strftime('%m-%d')
         status_text = f"🚨 매도일: {trigger_date_str}"
+        status_color = "#ef4444"
     elif aborted:
-        status_text = "🛑 기본전략 변화로 종료"
+        status_text = "🛑 강제종료"
+        status_color = "#ef4444"
     elif not dep_check:
         status_text = dep_msg
+        status_color = "#64748b"
+    else:
+        status_text = "💤 대기중"
+        status_color = "#64748b"
     
-    badge_html = ""
-    remaining_html = ""
+    # 배지 & 잔여일
+    badge_text = ""
+    remaining_text = ""
     if is_active and log_info:
         remaining = log_info['remaining_trading_days']
         est_days = int(remaining * 1.45)
         target_date = datetime.now() + timedelta(days=est_days)
-        badge_html = '<span class="strategy-badge strategy-badge-sell">🚨 매도 (현금)</span>'
-        remaining_html = f'<div class="strategy-remaining">⏳ {remaining} 거래일 남음 (예상: {target_date.strftime("%m-%d")})</div>'
+        badge_text = "🚨 매도 (현금)"
+        remaining_text = f"⏳ {remaining}일 남음 (~{target_date.strftime('%m-%d')})"
     elif aborted:
-        badge_html = '<span class="strategy-badge strategy-badge-aborted">🛑 강제 종료</span>'
+        badge_text = "🛑 강제 종료"
     
-    gap_html = ""
+    # 갭 계산
+    gap_text = ""
     if not is_active and not aborted and dep_check:
         if current_dev >= 0:
             gap = threshold - current_dev
-            gap_html = f'<div class="strategy-gap">📈 <span class="strategy-gap-value">+{gap:.1f}%p</span> 남음</div>'
+            gap_text = f"📈 +{gap:.1f}%p 남음"
         else:
-            gap_html = '<div class="strategy-gap">⚠️ 조건 대기</div>'
+            gap_text = "⚠️ 조건 대기"
     
-    st.markdown(f"""
-    <div class="strategy-card {card_class}">
-        <div class="strategy-header">
-            <div class="strategy-info">
-                <div class="strategy-icon {icon_class}">{ma}</div>
-                <div>
-                    <div class="strategy-name">Opt MA {ma}</div>
-                    <div class="strategy-status {'strategy-status-sell' if is_active else ''}">{status_text}</div>
+    # 프로그레스 바 색상
+    if is_active:
+        prog_color = "linear-gradient(90deg, #ef4444, #ec4899)"
+    elif progress >= 70:
+        prog_color = "linear-gradient(90deg, #f59e0b, #fbbf24)"
+    else:
+        prog_color = "linear-gradient(90deg, #475569, #64748b)"
+    
+    with st.container():
+        col1, col2, col3 = st.columns([1, 3, 2])
+        
+        with col1:
+            st.markdown(f"""
+            <div style="width: 45px; height: 45px; background: {'rgba(239, 68, 68, 0.2)' if is_active else 'rgba(71, 85, 105, 0.3)'}; 
+                        border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+                        font-size: 14px; font-weight: 700; color: {'#ef4444' if is_active else '#94a3b8'}; 
+                        font-family: 'JetBrains Mono', monospace;">{ma}</div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">Opt MA {ma}</div>
+            <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            if badge_text:
+                badge_bg = "rgba(239, 68, 68, 0.2)"
+                badge_color = "#ef4444"
+                st.markdown(f"""
+                <div style="text-align: right;">
+                    <span style="display: inline-block; padding: 4px 10px; background: {badge_bg}; 
+                                 border-radius: 6px; font-size: 11px; font-weight: 600; color: {badge_color}; 
+                                 font-family: 'JetBrains Mono', monospace;">{badge_text}</span>
                 </div>
-            </div>
-            <div style="text-align: right;">
-                {badge_html}
-                {remaining_html}
-            </div>
+                """, unsafe_allow_html=True)
+                if remaining_text:
+                    st.markdown(f"""
+                    <div style="text-align: right; color: #94a3b8; font-size: 11px; margin-top: 4px; 
+                                font-family: 'JetBrains Mono', monospace;">{remaining_text}</div>
+                    """, unsafe_allow_html=True)
+        
+        # 프로그레스 바
+        st.markdown(f"""
+        <div style="height: 6px; background: rgba(51, 65, 85, 0.5); border-radius: 3px; overflow: hidden; margin: 8px 0;">
+            <div style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 3px; transition: width 0.5s ease;"></div>
         </div>
-        <div class="strategy-progress">
-            <div class="strategy-progress-bar {progress_class}" style="width: {progress}%"></div>
-        </div>
-        {gap_html}
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+        # 갭 표시
+        if gap_text:
+            st.markdown(f"""
+            <div style="color: #64748b; font-size: 12px;">
+                {gap_text.split(' ')[0]} <span style="color: #f59e0b; font-weight: 600; font-family: 'JetBrains Mono', monospace;">{' '.join(gap_text.split(' ')[1:])}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
 
 # -----------------------------------------------------------
