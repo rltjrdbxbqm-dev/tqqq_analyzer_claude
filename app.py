@@ -1205,6 +1205,110 @@ def render_sell_strategy_card(name, params, latest, is_active, log_info, aborted
         st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
 
+def render_base_strategy_card(ma, latest, is_bullish, ma_periods):
+    """기본 전략 카드 렌더링"""
+    price = latest['TQQQ_Close']
+    ma_value = latest[f'MA_{ma}']
+    deviation = latest[f'Deviation_{ma}']
+    is_above = price > ma_value
+    
+    # 상승장: 모든 MA 25%씩 기여
+    # 하락장: MA20, MA45만 50%씩 기여
+    if is_bullish:
+        contribution = 0.25 if is_above else 0
+        is_active_in_regime = True
+    else:
+        if ma in [20, 45]:
+            contribution = 0.5 if is_above else 0
+            is_active_in_regime = True
+        else:
+            contribution = 0
+            is_active_in_regime = False
+    
+    # 스타일 결정
+    if not is_active_in_regime:
+        icon_bg = "rgba(71, 85, 105, 0.2)"
+        icon_color = "#475569"
+        status_text = "🚫 하락장 미적용"
+        status_color = "#475569"
+        prog_color = "linear-gradient(90deg, #334155, #475569)"
+    elif is_above:
+        icon_bg = "rgba(16, 185, 129, 0.2)"
+        icon_color = "#10b981"
+        status_text = f"✅ MA 상회 (+{deviation:.1f}%)"
+        status_color = "#10b981"
+        prog_color = "linear-gradient(90deg, #10b981, #06b6d4)"
+    else:
+        icon_bg = "rgba(239, 68, 68, 0.2)"
+        icon_color = "#ef4444"
+        status_text = f"❌ MA 하회 ({deviation:.1f}%)"
+        status_color = "#ef4444"
+        prog_color = "linear-gradient(90deg, #475569, #64748b)"
+    
+    # 비중 기여도 텍스트
+    if not is_active_in_regime:
+        contrib_text = "—"
+        contrib_color = "#475569"
+    elif contribution > 0:
+        contrib_text = f"+{contribution:.0%}"
+        contrib_color = "#10b981"
+    else:
+        contrib_text = "0%"
+        contrib_color = "#64748b"
+    
+    with st.container():
+        col1, col2, col3 = st.columns([1, 3, 2])
+        
+        with col1:
+            st.markdown(f"""
+            <div style="width: 45px; height: 45px; background: {icon_bg}; 
+                        border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+                        font-size: 14px; font-weight: 700; color: {icon_color}; 
+                        font-family: 'JetBrains Mono', monospace;">{ma}</div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            regime_note = ""
+            if is_bullish:
+                regime_note = "(25%)"
+            else:
+                regime_note = "(50%)" if ma in [20, 45] else ""
+            st.markdown(f"""
+            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA{ma} <span style="color: #64748b; font-size: 11px;">{regime_note}</span></div>
+            <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div style="text-align: right;">
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">TQQQ 비중 기여</div>
+                <div style="font-size: 18px; font-weight: 700; color: {contrib_color}; font-family: 'JetBrains Mono', monospace;">{contrib_text}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 프로그레스 바 (MA 대비 가격 위치 시각화)
+        # 0% = MA 대비 -30%, 100% = MA 대비 +30%
+        normalized = (deviation + 30) / 60 * 100
+        normalized = max(0, min(100, normalized))
+        
+        st.markdown(f"""
+        <div style="position: relative; height: 6px; background: rgba(51, 65, 85, 0.5); border-radius: 3px; overflow: visible; margin: 8px 0;">
+            <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #64748b;"></div>
+            <div style="height: 100%; width: {normalized}%; background: {prog_color}; border-radius: 3px;"></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 가격 정보
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; color: #64748b; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
+            <span>현재가: ${price:.2f}</span>
+            <span>MA{ma}: ${ma_value:.2f}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+
 # -----------------------------------------------------------
 # 4. 메인 실행 함수
 # -----------------------------------------------------------
@@ -1294,9 +1398,35 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3 = st.tabs(["📈 매수 전략 (Buy)", "📉 매도 전략 (Sell)", "📊 차트"])
+        tab1, tab2, tab3, tab4 = st.tabs(["⚖️ 기본 전략", "📈 매수 전략", "📉 매도 전략", "📊 차트"])
         
         with tab1:
+            # 기본 전략 요약
+            regime_icon = "📈" if res_today['is_bullish'] else "📉"
+            regime_label = "상승장" if res_today['is_bullish'] else "하락장"
+            regime_desc = "4개 MA 각 25%" if res_today['is_bullish'] else "MA20, MA45 각 50%"
+            
+            st.markdown(f"""
+            <div class="adjustment-badge" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #a78bfa;">
+                {regime_icon} 현재 레짐: <span class="adjustment-value">{regime_label}</span> · {regime_desc}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 기본 TQQQ 비중 표시
+            st.markdown(f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; 
+                        background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); 
+                        border-radius: 10px; margin-bottom: 16px;">
+                <span style="color: #94a3b8; font-size: 13px;">기본 전략 TQQQ 비중</span>
+                <span style="color: #06b6d4; font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{res_today['base_tqqq']:.0%}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # 각 MA별 상태
+            for ma in analyzer.ma_periods:
+                render_base_strategy_card(ma, latest, res_today['is_bullish'], analyzer.ma_periods)
+        
+        with tab2:
             st.markdown(f"""
             <div class="adjustment-badge adjustment-badge-buy">
                 조정 비중: <span class="adjustment-value">{res_today['error_adj']:.1%}</span> (GLD → TQQQ)
@@ -1309,7 +1439,7 @@ def main():
                 aborted = log_info.get('aborted_today', False) if log_info else False
                 render_buy_strategy_card(name, params, latest, is_active, log_info, aborted)
         
-        with tab2:
+        with tab3:
             st.markdown(f"""
             <div class="adjustment-badge adjustment-badge-sell">
                 조정 비중: <span class="adjustment-value">{abs(res_today['opt_cash_adj']):.1%}</span> (TQQQ → Cash)
@@ -1322,7 +1452,7 @@ def main():
                 aborted = log_info.get('aborted_today', False) if log_info else False
                 render_sell_strategy_card(name, params, latest, is_active, log_info, aborted)
         
-        with tab3:
+        with tab4:
             fig = go.Figure()
             chart_data = data.iloc[-120:]
             
