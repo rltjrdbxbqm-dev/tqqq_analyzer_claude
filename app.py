@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 프리미엄 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ Sniper v4.6",
+    page_title="TQQQ Sniper v5.0",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -264,9 +264,9 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
     }
     
-    .portfolio-card-gld:hover {
-        border-color: rgba(245, 158, 11, 0.3);
-        box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
+    .portfolio-card-btal:hover {
+        border-color: rgba(139, 92, 246, 0.3);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
     }
     
     .portfolio-header {
@@ -312,12 +312,8 @@ st.markdown("""
         color: #06b6d4;
     }
     
-    .portfolio-value-gld {
-        color: #f59e0b;
-    }
-    
-    .portfolio-value-cash {
-        color: #94a3b8;
+    .portfolio-value-btal {
+        color: #8b5cf6;
     }
     
     /* 커스텀 프로그레스 바 */
@@ -338,221 +334,8 @@ st.markdown("""
         background: linear-gradient(90deg, #06b6d4, #10b981);
     }
     
-    .progress-gld {
-        background: linear-gradient(90deg, #f59e0b, #fbbf24);
-    }
-    
-    .progress-cash {
-        background: linear-gradient(90deg, #64748b, #94a3b8);
-    }
-    
-    /* 전략 탭 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: transparent;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background: rgba(30, 41, 59, 0.3);
-        border: 1px solid rgba(71, 85, 105, 0.3);
-        border-radius: 12px;
-        color: #94a3b8;
-        padding: 12px 24px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 13px;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: rgba(6, 182, 212, 0.1);
-        border-color: rgba(6, 182, 212, 0.3);
-        color: #06b6d4;
-    }
-    
-    .stTabs [data-baseweb="tab-panel"] {
-        padding-top: 16px;
-    }
-    
-    /* 전략 카드 */
-    .strategy-card {
-        background: rgba(30, 41, 59, 0.3);
-        border: 1px solid rgba(71, 85, 105, 0.3);
-        border-radius: 14px;
-        padding: 16px 20px;
-        margin-bottom: 12px;
-        transition: all 0.3s ease;
-    }
-    
-    .strategy-card:hover {
-        border-color: rgba(100, 116, 139, 0.5);
-    }
-    
-    .strategy-card-active-buy {
-        background: rgba(16, 185, 129, 0.05);
-        border-color: rgba(16, 185, 129, 0.3);
-    }
-    
-    .strategy-card-active-sell {
-        background: rgba(239, 68, 68, 0.05);
-        border-color: rgba(239, 68, 68, 0.3);
-    }
-    
-    .strategy-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-    }
-    
-    .strategy-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .strategy-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .strategy-icon-active-buy {
-        background: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-    }
-    
-    .strategy-icon-active-sell {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-    }
-    
-    .strategy-icon-inactive {
-        background: rgba(71, 85, 105, 0.3);
-        color: #94a3b8;
-    }
-    
-    .strategy-name {
-        font-weight: 600;
-        color: #e2e8f0;
-        font-size: 14px;
-    }
-    
-    .strategy-status {
-        color: #64748b;
-        font-size: 12px;
-        margin-top: 2px;
-    }
-    
-    .strategy-status-active {
-        color: #10b981;
-    }
-    
-    .strategy-status-sell {
-        color: #ef4444;
-    }
-    
-    .strategy-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 600;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .strategy-badge-active {
-        background: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-    }
-    
-    .strategy-badge-sell {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-    }
-    
-    .strategy-badge-aborted {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-    }
-    
-    .strategy-remaining {
-        color: #94a3b8;
-        font-size: 12px;
-        margin-top: 4px;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .strategy-progress {
-        height: 6px;
-        background: rgba(51, 65, 85, 0.5);
-        border-radius: 3px;
-        overflow: hidden;
-        margin-top: 8px;
-    }
-    
-    .strategy-progress-bar {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 0.5s ease;
-    }
-    
-    .strategy-progress-buy {
-        background: linear-gradient(90deg, #10b981, #06b6d4);
-    }
-    
-    .strategy-progress-sell {
-        background: linear-gradient(90deg, #ef4444, #ec4899);
-    }
-    
-    .strategy-progress-inactive {
-        background: linear-gradient(90deg, #475569, #64748b);
-    }
-    
-    .strategy-gap {
-        color: #64748b;
-        font-size: 12px;
-        margin-top: 8px;
-    }
-    
-    .strategy-gap-value {
-        color: #f59e0b;
-        font-weight: 600;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    /* 조정 비중 배지 */
-    .adjustment-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 16px;
-        border-radius: 10px;
-        font-size: 12px;
-        margin-bottom: 16px;
-    }
-    
-    .adjustment-badge-buy {
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: #10b981;
-    }
-    
-    .adjustment-badge-sell {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-    }
-    
-    .adjustment-value {
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
+    .progress-btal {
+        background: linear-gradient(90deg, #8b5cf6, #a78bfa);
     }
     
     /* Stochastic 카드 */
@@ -690,31 +473,18 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v4.6 (기본 전략 하락장 비중 계산 오류 수정)"""
+    """실시간 투자 신호 분석기 - v5.0 (기본 전략 Only, BTAL 방어)"""
 
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
         self.ma_periods = [20, 45, 151, 212]
-        
-        self.error_rate_strategies = {
-            'TQQQ_Strategy_1': {'ma_period': 20, 'deviation_threshold': -12, 'holding_days': 8},
-            'TQQQ_Strategy_2': {'ma_period': 45, 'deviation_threshold': -11, 'holding_days': 5},
-            'TQQQ_Strategy_3': {'ma_period': 151, 'deviation_threshold': -21, 'holding_days': 8},
-            'TQQQ_Strategy_4': {'ma_period': 212, 'deviation_threshold': -15, 'holding_days': 4},
-        }
-        
-        self.optimized_strategies = {
-            'TQQQ_Optimized_1': {'ma_period': 45, 'error_rate': 33, 'sell_days': 11},
-            'TQQQ_Optimized_2': {'ma_period': 151, 'error_rate': 55, 'sell_days': 13, 'depends_on': 20},
-            'TQQQ_Optimized_3': {'ma_period': 212, 'error_rate': 55, 'sell_days': 12, 'depends_on': 45},
-        }
 
     @st.cache_data(ttl=300)
     def get_latest_data(_self, days_back=400):
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
-            tickers = ['TQQQ', 'GLD']
+            tickers = ['TQQQ', 'BTAL']
             data = {}
             for ticker in tickers:
                 stock_data = yf.download(ticker, start=start_date, end=end_date, progress=False)
@@ -747,86 +517,8 @@ class RealTimeInvestmentAnalyzer:
             df[f'Deviation_{ma}'] = ((df['TQQQ_Close'] - df[f'MA_{ma}']) / df[f'MA_{ma}']) * 100
         return df.dropna()
 
-    def calculate_base_allocation_series(self, data):
-        is_bullish = data['%K'] > data['%D']
-        
-        ma_signals = pd.DataFrame(index=data.index)
-        for ma in self.ma_periods:
-            ma_signals[ma] = (data['TQQQ_Close'] > data[f'MA_{ma}']).astype(int)
-            
-        bull_alloc = ma_signals.sum(axis=1) * 0.25
-        bear_alloc = (ma_signals[20] + ma_signals[45]) * 0.5
-        
-        base_alloc = pd.Series(np.where(is_bullish, bull_alloc, bear_alloc), index=data.index)
-        base_change_mask = base_alloc.diff().fillna(0) != 0
-        return base_change_mask
-
-    def check_signal_with_simulation(self, data, strategy_type, params, base_change_mask):
-        target_days = params['holding_days'] if strategy_type == 'error_buy' else params['sell_days']
-        ma_period = params['ma_period']
-        threshold = params['deviation_threshold'] if strategy_type == 'error_buy' else params['error_rate']
-
-        remaining_days = 0 
-        last_trigger_info = {}
-        aborted_today = False
-        
-        for idx, row in data.iterrows():
-            if remaining_days > 0:
-                if base_change_mask[idx]:
-                    remaining_days = 0 
-                    if idx == data.index[-1]:
-                        aborted_today = True
-                    continue 
-
-            if remaining_days > 0:
-                remaining_days -= 1
-            
-            price_above_ma = row['TQQQ_Close'] > row[f'MA_{ma_period}']
-            deviation = row[f'Deviation_{ma_period}']
-            
-            condition = False
-            if strategy_type == 'error_buy':
-                condition = (not price_above_ma) and (deviation <= threshold)
-            else: 
-                is_disabled = False
-                if 'depends_on' in params and not (row['TQQQ_Close'] > row[f"MA_{params['depends_on']}"]):
-                    is_disabled = True
-                condition = (not is_disabled) and price_above_ma and (deviation >= threshold)
-            
-            if condition:
-                remaining_days = target_days
-                last_trigger_info = {
-                    'trigger_deviation': deviation,
-                    'trigger_date': idx
-                }
-                aborted_today = False
-
-        is_active = remaining_days > 0
-        
-        final_details = {}
-        if last_trigger_info:
-            today = data.index[-1]
-            days_ago_calendar = (today - last_trigger_info['trigger_date']).days
-            
-            final_details = {
-                'trigger_deviation': last_trigger_info['trigger_deviation'],
-                'days_ago': days_ago_calendar,
-                'trigger_date': last_trigger_info['trigger_date'],
-                'remaining_trading_days': remaining_days,
-                'aborted_today': aborted_today
-            }
-
-        return is_active, remaining_days, final_details
-
-    def analyze_portfolio(self, data, target_idx=None):
-        if target_idx is not None:
-            analysis_data = data.iloc[:target_idx+1]
-        else:
-            analysis_data = data
-            
-        target_data = analysis_data.iloc[-1]
-        
-        base_change_mask = self.calculate_base_allocation_series(analysis_data)
+    def analyze_portfolio(self, data):
+        target_data = data.iloc[-1]
         
         is_bullish = target_data['%K'] > target_data['%D']
         ma_signals = {p: target_data['TQQQ_Close'] > target_data[f'MA_{p}'] for p in self.ma_periods}
@@ -836,54 +528,13 @@ class RealTimeInvestmentAnalyzer:
         else: 
             base_tqqq = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5
         
-        base_gld = 1 - base_tqqq
-        base_cash = 0
-        
-        active_error_strats, error_logs = [], {}
-        for name, params in self.error_rate_strategies.items():
-            active, remaining, details = self.check_signal_with_simulation(analysis_data, 'error_buy', params, base_change_mask)
-            if active:
-                active_error_strats.append(name)
-            if details:
-                error_logs[name] = details
-        error_adj = len(active_error_strats) * 0.25
-        
-        active_sell_cash = []
-        sell_logs = {}
-        for name, params in self.optimized_strategies.items():
-            active, remaining, details = self.check_signal_with_simulation(analysis_data, 'optimized_sell', params, base_change_mask)
-            if active:
-                active_sell_cash.append(name)
-            if details:
-                sell_logs[name] = details
-
-        opt_cash_adj = len(active_sell_cash) * 0.25
-        
-        final_tqqq, final_gld, final_cash = base_tqqq, base_gld, base_cash
-        
-        if error_adj > 0:
-            amt = min(final_gld, error_adj)
-            final_gld -= amt
-            final_tqqq += amt
-            
-        if opt_cash_adj > 0:
-            amt = min(final_tqqq, opt_cash_adj)
-            final_tqqq -= amt
-            final_cash += amt
-            
-        total = final_tqqq + final_gld + final_cash
-        if total > 0:
-            final_tqqq /= total; final_gld /= total; final_cash /= total
+        base_btal = 1 - base_tqqq
             
         return {
-            'final_tqqq': final_tqqq, 'final_gld': final_gld, 'final_cash': final_cash,
-            'base_tqqq': base_tqqq, 
-            'error_adj': error_adj, 
-            'opt_cash_adj': -opt_cash_adj, 
-            'active_error_strats': active_error_strats, 
-            'active_sell_cash': active_sell_cash,
-            'error_logs': error_logs, 'sell_logs': sell_logs,
-            'is_bullish': is_bullish
+            'final_tqqq': base_tqqq, 
+            'final_btal': base_btal,
+            'is_bullish': is_bullish,
+            'ma_signals': ma_signals
         }
 
     def analyze_all(self, data):
@@ -891,11 +542,18 @@ class RealTimeInvestmentAnalyzer:
         data_prev = data.iloc[:-1]
         yesterday = self.analyze_portfolio(data_prev)
         
-        changes = {'tqqq': today['final_tqqq'] - yesterday['final_tqqq'], 'gld': today['final_gld'] - yesterday['final_gld']}
+        changes = {
+            'tqqq': today['final_tqqq'] - yesterday['final_tqqq'], 
+            'btal': today['final_btal'] - yesterday['final_btal']
+        }
+        
         actions = []
         for asset, chg in changes.items():
-            if chg > 0.01: actions.append({'action': '매수', 'asset': asset.upper(), 'amt': chg})
-            elif chg < -0.01: actions.append({'action': '매도', 'asset': asset.upper(), 'amt': abs(chg)})
+            if chg > 0.01: 
+                actions.append({'action': '매수', 'asset': asset.upper(), 'amt': chg})
+            elif chg < -0.01: 
+                actions.append({'action': '매도', 'asset': asset.upper(), 'amt': abs(chg)})
+        
         return today, yesterday, changes, actions
 
 
@@ -948,8 +606,7 @@ def render_action_card(actions):
 def render_portfolio_card(asset, value, change, prev_value):
     colors = {
         'TQQQ': {'value': 'portfolio-value-tqqq', 'progress': 'progress-tqqq', 'hover': ''},
-        'GLD': {'value': 'portfolio-value-gld', 'progress': 'progress-gld', 'hover': 'portfolio-card-gld'},
-        'CASH': {'value': 'portfolio-value-cash', 'progress': 'progress-cash', 'hover': ''}
+        'BTAL': {'value': 'portfolio-value-btal', 'progress': 'progress-btal', 'hover': 'portfolio-card-btal'},
     }
     
     change_class = 'portfolio-change-neutral'
@@ -974,235 +631,6 @@ def render_portfolio_card(asset, value, change, prev_value):
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-
-def render_buy_strategy_card(name, params, latest, is_active, log_info, aborted):
-    ma = params['ma_period']
-    threshold = params['deviation_threshold']
-    current_dev = latest[f'Deviation_{ma}']
-    
-    if current_dev > 0:
-        progress = 0
-    elif current_dev <= threshold:
-        progress = 100
-    else:
-        progress = min(100, abs(current_dev) / abs(threshold) * 100)
-    
-    # 카드 스타일 결정
-    if is_active:
-        card_border = "border-left: 3px solid #10b981;"
-        card_bg = "background: rgba(16, 185, 129, 0.05);"
-    else:
-        card_border = "border-left: 3px solid #475569;"
-        card_bg = "background: rgba(30, 41, 59, 0.3);"
-    
-    # 상태 텍스트
-    if is_active and log_info:
-        trigger_date_str = log_info['trigger_date'].strftime('%m-%d')
-        status_text = f"✅ 진입일: {trigger_date_str}"
-        status_color = "#10b981"
-    elif aborted:
-        status_text = "🛑 강제종료"
-        status_color = "#ef4444"
-    else:
-        status_text = "💤 대기중"
-        status_color = "#64748b"
-    
-    # 배지 & 잔여일
-    badge_text = ""
-    remaining_text = ""
-    if is_active and log_info:
-        remaining = log_info['remaining_trading_days']
-        est_days = int(remaining * 1.45)
-        target_date = datetime.now() + timedelta(days=est_days)
-        badge_text = "✓ 진입 완료"
-        remaining_text = f"⏳ {remaining}일 남음 (~{target_date.strftime('%m-%d')})"
-    elif aborted:
-        badge_text = "🛑 강제 종료"
-    
-    # 갭 계산
-    gap_text = ""
-    if not is_active and not aborted:
-        if current_dev > 0:
-            gap = current_dev - threshold
-            gap_text = f"📉 -{gap:.1f}%p 남음"
-        else:
-            gap_text = "⚠️ 조건 대기"
-    
-    # 프로그레스 바 색상
-    if is_active:
-        prog_color = "linear-gradient(90deg, #10b981, #06b6d4)"
-    elif progress >= 70:
-        prog_color = "linear-gradient(90deg, #f59e0b, #fbbf24)"
-    else:
-        prog_color = "linear-gradient(90deg, #475569, #64748b)"
-    
-    with st.container():
-        col1, col2, col3 = st.columns([1, 3, 2])
-        
-        with col1:
-            st.markdown(f"""
-            <div style="width: 45px; height: 45px; background: {'rgba(16, 185, 129, 0.2)' if is_active else 'rgba(71, 85, 105, 0.3)'}; 
-                        border-radius: 10px; display: flex; align-items: center; justify-content: center; 
-                        font-size: 14px; font-weight: 700; color: {'#10b981' if is_active else '#94a3b8'}; 
-                        font-family: 'JetBrains Mono', monospace;">{ma}</div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA{ma} 이탈률</div>
-            <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            if badge_text:
-                badge_bg = "rgba(16, 185, 129, 0.2)" if is_active else "rgba(239, 68, 68, 0.2)"
-                badge_color = "#10b981" if is_active else "#ef4444"
-                st.markdown(f"""
-                <div style="text-align: right;">
-                    <span style="display: inline-block; padding: 4px 10px; background: {badge_bg}; 
-                                 border-radius: 6px; font-size: 11px; font-weight: 600; color: {badge_color}; 
-                                 font-family: 'JetBrains Mono', monospace;">{badge_text}</span>
-                </div>
-                """, unsafe_allow_html=True)
-                if remaining_text:
-                    st.markdown(f"""
-                    <div style="text-align: right; color: #94a3b8; font-size: 11px; margin-top: 4px; 
-                                font-family: 'JetBrains Mono', monospace;">{remaining_text}</div>
-                    """, unsafe_allow_html=True)
-        
-        # 프로그레스 바
-        st.markdown(f"""
-        <div style="height: 6px; background: rgba(51, 65, 85, 0.5); border-radius: 3px; overflow: hidden; margin: 8px 0;">
-            <div style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 3px; transition: width 0.5s ease;"></div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 갭 표시
-        if gap_text:
-            st.markdown(f"""
-            <div style="color: #64748b; font-size: 12px;">
-                {gap_text.split(' ')[0]} <span style="color: #f59e0b; font-weight: 600; font-family: 'JetBrains Mono', monospace;">{' '.join(gap_text.split(' ')[1:])}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-
-
-def render_sell_strategy_card(name, params, latest, is_active, log_info, aborted):
-    ma = params['ma_period']
-    threshold = params['error_rate']
-    current_dev = latest[f'Deviation_{ma}']
-    
-    dep_check = True
-    dep_msg = ""
-    if 'depends_on' in params:
-        dep_ma = params['depends_on']
-        if not (latest['TQQQ_Close'] > latest[f'MA_{dep_ma}']):
-            dep_check = False
-            dep_msg = f"🚫 MA{dep_ma} 조건 미달"
-    
-    if current_dev < 0:
-        progress = 0
-    elif current_dev >= threshold:
-        progress = 100
-    else:
-        progress = min(100, current_dev / threshold * 100)
-    
-    # 상태 텍스트
-    if is_active and log_info:
-        trigger_date_str = log_info['trigger_date'].strftime('%m-%d')
-        status_text = f"🚨 매도일: {trigger_date_str}"
-        status_color = "#ef4444"
-    elif aborted:
-        status_text = "🛑 강제종료"
-        status_color = "#ef4444"
-    elif not dep_check:
-        status_text = dep_msg
-        status_color = "#64748b"
-    else:
-        status_text = "💤 대기중"
-        status_color = "#64748b"
-    
-    # 배지 & 잔여일
-    badge_text = ""
-    remaining_text = ""
-    if is_active and log_info:
-        remaining = log_info['remaining_trading_days']
-        est_days = int(remaining * 1.45)
-        target_date = datetime.now() + timedelta(days=est_days)
-        badge_text = "🚨 매도 (현금)"
-        remaining_text = f"⏳ {remaining}일 남음 (~{target_date.strftime('%m-%d')})"
-    elif aborted:
-        badge_text = "🛑 강제 종료"
-    
-    # 갭 계산
-    gap_text = ""
-    if not is_active and not aborted and dep_check:
-        if current_dev >= 0:
-            gap = threshold - current_dev
-            gap_text = f"📈 +{gap:.1f}%p 남음"
-        else:
-            gap_text = "⚠️ 조건 대기"
-    
-    # 프로그레스 바 색상
-    if is_active:
-        prog_color = "linear-gradient(90deg, #ef4444, #ec4899)"
-    elif progress >= 70:
-        prog_color = "linear-gradient(90deg, #f59e0b, #fbbf24)"
-    else:
-        prog_color = "linear-gradient(90deg, #475569, #64748b)"
-    
-    with st.container():
-        col1, col2, col3 = st.columns([1, 3, 2])
-        
-        with col1:
-            st.markdown(f"""
-            <div style="width: 45px; height: 45px; background: {'rgba(239, 68, 68, 0.2)' if is_active else 'rgba(71, 85, 105, 0.3)'}; 
-                        border-radius: 10px; display: flex; align-items: center; justify-content: center; 
-                        font-size: 14px; font-weight: 700; color: {'#ef4444' if is_active else '#94a3b8'}; 
-                        font-family: 'JetBrains Mono', monospace;">{ma}</div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA{ma} 이탈률</div>
-            <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            if badge_text:
-                badge_bg = "rgba(239, 68, 68, 0.2)"
-                badge_color = "#ef4444"
-                st.markdown(f"""
-                <div style="text-align: right;">
-                    <span style="display: inline-block; padding: 4px 10px; background: {badge_bg}; 
-                                 border-radius: 6px; font-size: 11px; font-weight: 600; color: {badge_color}; 
-                                 font-family: 'JetBrains Mono', monospace;">{badge_text}</span>
-                </div>
-                """, unsafe_allow_html=True)
-                if remaining_text:
-                    st.markdown(f"""
-                    <div style="text-align: right; color: #94a3b8; font-size: 11px; margin-top: 4px; 
-                                font-family: 'JetBrains Mono', monospace;">{remaining_text}</div>
-                    """, unsafe_allow_html=True)
-        
-        # 프로그레스 바
-        st.markdown(f"""
-        <div style="height: 6px; background: rgba(51, 65, 85, 0.5); border-radius: 3px; overflow: hidden; margin: 8px 0;">
-            <div style="height: 100%; width: {progress}%; background: {prog_color}; border-radius: 3px; transition: width 0.5s ease;"></div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 갭 표시
-        if gap_text:
-            st.markdown(f"""
-            <div style="color: #64748b; font-size: 12px;">
-                {gap_text.split(' ')[0]} <span style="color: #f59e0b; font-weight: 600; font-family: 'JetBrains Mono', monospace;">{' '.join(gap_text.split(' ')[1:])}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
 
 def render_base_strategy_card(ma, latest, is_bullish, ma_periods):
@@ -1322,9 +750,9 @@ def main():
             <div>
                 <div>
                     <span class="header-title">TQQQ SNIPER</span>
-                    <span class="header-version">v4.6</span>
+                    <span class="header-version">v5.0</span>
                 </div>
-                <div class="header-subtitle">Real-Time Signal Analysis</div>
+                <div class="header-subtitle">Strategy 3 Basic + BTAL Defense</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1380,14 +808,11 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
             render_portfolio_card('TQQQ', res_today['final_tqqq'], changes['tqqq'], res_prev['final_tqqq'])
         with col2:
-            render_portfolio_card('GLD', res_today['final_gld'], changes['gld'], res_prev['final_gld'])
-        with col3:
-            cash_change = res_today['final_cash'] - res_prev['final_cash']
-            render_portfolio_card('CASH', res_today['final_cash'], cash_change, res_prev['final_cash'])
+            render_portfolio_card('BTAL', res_today['final_btal'], changes['btal'], res_prev['final_btal'])
         
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
         
@@ -1398,114 +823,95 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        tab1, tab2, tab3, tab4 = st.tabs(["⚖️ 기본 전략", "📈 매수 전략", "📉 매도 전략", "📊 차트"])
+        # 기본 전략 요약
+        regime_icon = "📈" if res_today['is_bullish'] else "📉"
+        regime_label = "상승장" if res_today['is_bullish'] else "하락장"
+        regime_desc = "4개 MA 각 25%" if res_today['is_bullish'] else "MA20, MA45 각 50%"
         
-        with tab1:
-            # 기본 전략 요약
-            regime_icon = "📈" if res_today['is_bullish'] else "📉"
-            regime_label = "상승장" if res_today['is_bullish'] else "하락장"
-            regime_desc = "4개 MA 각 25%" if res_today['is_bullish'] else "MA20, MA45 각 50%"
-            
-            st.markdown(f"""
-            <div class="adjustment-badge" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #a78bfa;">
-                {regime_icon} 현재 레짐: <span class="adjustment-value">{regime_label}</span> · {regime_desc}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 기본 TQQQ 비중 표시
-            st.markdown(f"""
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; 
-                        background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); 
-                        border-radius: 10px; margin-bottom: 16px;">
-                <span style="color: #94a3b8; font-size: 13px;">기본 전략 TQQQ 비중</span>
-                <span style="color: #06b6d4; font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{res_today['base_tqqq']:.0%}</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # 각 MA별 상태
-            for ma in analyzer.ma_periods:
-                render_base_strategy_card(ma, latest, res_today['is_bullish'], analyzer.ma_periods)
+        st.markdown(f"""
+        <div style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px;
+                    background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #a78bfa;
+                    margin-bottom: 16px; font-size: 12px;">
+            {regime_icon} 현재 레짐: <span style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">{regime_label}</span> · {regime_desc}
+        </div>
+        """, unsafe_allow_html=True)
         
-        with tab2:
-            st.markdown(f"""
-            <div class="adjustment-badge adjustment-badge-buy">
-                조정 비중: <span class="adjustment-value">{res_today['error_adj']:.1%}</span> (GLD → TQQQ)
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for name, params in analyzer.error_rate_strategies.items():
-                is_active = name in res_today['active_error_strats']
-                log_info = res_today['error_logs'].get(name)
-                aborted = log_info.get('aborted_today', False) if log_info else False
-                render_buy_strategy_card(name, params, latest, is_active, log_info, aborted)
+        # 기본 TQQQ 비중 표시
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; 
+                    background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); 
+                    border-radius: 10px; margin-bottom: 16px;">
+            <span style="color: #94a3b8; font-size: 13px;">기본 전략 TQQQ 비중</span>
+            <span style="color: #06b6d4; font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{res_today['final_tqqq']:.0%}</span>
+        </div>
+        """, unsafe_allow_html=True)
         
-        with tab3:
-            st.markdown(f"""
-            <div class="adjustment-badge adjustment-badge-sell">
-                조정 비중: <span class="adjustment-value">{abs(res_today['opt_cash_adj']):.1%}</span> (TQQQ → Cash)
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for name, params in analyzer.optimized_strategies.items():
-                is_active = name in res_today['active_sell_cash']
-                log_info = res_today['sell_logs'].get(name)
-                aborted = log_info.get('aborted_today', False) if log_info else False
-                render_sell_strategy_card(name, params, latest, is_active, log_info, aborted)
+        # 각 MA별 상태
+        for ma in analyzer.ma_periods:
+            render_base_strategy_card(ma, latest, res_today['is_bullish'], analyzer.ma_periods)
         
-        with tab4:
-            fig = go.Figure()
-            chart_data = data.iloc[-120:]
-            
-            fig.add_trace(go.Candlestick(
+        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+        
+        # 차트
+        st.markdown("""
+        <div class="section-title">
+            <span>📊</span> PRICE CHART
+        </div>
+        """, unsafe_allow_html=True)
+        
+        fig = go.Figure()
+        chart_data = data.iloc[-120:]
+        
+        fig.add_trace(go.Candlestick(
+            x=chart_data.index,
+            open=chart_data['TQQQ_Open'],
+            high=chart_data['TQQQ_High'],
+            low=chart_data['TQQQ_Low'],
+            close=chart_data['TQQQ_Close'],
+            name='TQQQ',
+            increasing_line_color='#10b981',
+            decreasing_line_color='#ef4444',
+            increasing_fillcolor='rgba(16, 185, 129, 0.8)',
+            decreasing_fillcolor='rgba(239, 68, 68, 0.8)'
+        ))
+        
+        ma_colors = ['#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899']
+        for i, ma in enumerate(analyzer.ma_periods):
+            fig.add_trace(go.Scatter(
                 x=chart_data.index,
-                open=chart_data['TQQQ_Open'],
-                high=chart_data['TQQQ_High'],
-                low=chart_data['TQQQ_Low'],
-                close=chart_data['TQQQ_Close'],
-                name='TQQQ',
-                increasing_line_color='#10b981',
-                decreasing_line_color='#ef4444',
-                increasing_fillcolor='rgba(16, 185, 129, 0.8)',
-                decreasing_fillcolor='rgba(239, 68, 68, 0.8)'
+                y=chart_data[f'MA_{ma}'],
+                name=f'MA {ma}',
+                line=dict(color=ma_colors[i], width=1.5),
+                opacity=0.8
             ))
-            
-            ma_colors = ['#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899']
-            for i, ma in enumerate(analyzer.ma_periods):
-                fig.add_trace(go.Scatter(
-                    x=chart_data.index,
-                    y=chart_data[f'MA_{ma}'],
-                    name=f'MA {ma}',
-                    line=dict(color=ma_colors[i], width=1.5),
-                    opacity=0.8
-                ))
-            
-            fig.update_layout(
-                height=500,
-                margin=dict(l=0, r=0, t=20, b=0),
-                template="plotly_dark",
-                paper_bgcolor='rgba(10, 11, 15, 0)',
-                plot_bgcolor='rgba(10, 11, 15, 0.5)',
-                xaxis_rangeslider_visible=False,
-                xaxis=dict(
-                    gridcolor='rgba(71, 85, 105, 0.2)',
-                    showgrid=True
-                ),
-                yaxis=dict(
-                    gridcolor='rgba(71, 85, 105, 0.2)',
-                    showgrid=True
-                ),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    bgcolor='rgba(0,0,0,0)'
-                ),
-                font=dict(family="JetBrains Mono, monospace", color='#94a3b8')
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+        
+        fig.update_layout(
+            height=450,
+            margin=dict(l=0, r=0, t=20, b=0),
+            template="plotly_dark",
+            paper_bgcolor='rgba(10, 11, 15, 0)',
+            plot_bgcolor='rgba(10, 11, 15, 0.5)',
+            xaxis_rangeslider_visible=False,
+            xaxis=dict(
+                gridcolor='rgba(71, 85, 105, 0.2)',
+                showgrid=True
+            ),
+            yaxis=dict(
+                gridcolor='rgba(71, 85, 105, 0.2)',
+                showgrid=True
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                bgcolor='rgba(0,0,0,0)'
+            ),
+            font=dict(family="JetBrains Mono, monospace", color='#94a3b8')
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
         
         # Stochastic 인디케이터
         st.markdown(f"""
@@ -1530,7 +936,7 @@ def main():
         # 푸터
         st.markdown("""
         <div class="footer">
-            Built with precision • Not financial advice
+            Strategy 3 Basic + BTAL Defense • Built with precision • Not financial advice
         </div>
         """, unsafe_allow_html=True)
 
