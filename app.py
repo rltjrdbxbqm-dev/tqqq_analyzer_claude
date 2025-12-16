@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # -----------------------------------------------------------
-# 1. 페이지 설정
+# 페이지 설정
 # -----------------------------------------------------------
 st.set_page_config(
     page_title="TQQQ Sniper",
@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------
-# 2. 프리미엄 CSS - 트레이딩 터미널 스타일
+# CSS 스타일 (모바일 최적화)
 # -----------------------------------------------------------
 st.markdown("""
 <style>
@@ -27,8 +27,7 @@ st.markdown("""
     
     :root {
         --bg-primary: #080b12;
-        --bg-secondary: #0d1117;
-        --bg-card: rgba(13, 17, 23, 0.8);
+        --bg-card: rgba(13, 17, 23, 0.9);
         --border: rgba(48, 54, 61, 0.6);
         --text-primary: #f0f6fc;
         --text-secondary: #8b949e;
@@ -37,91 +36,66 @@ st.markdown("""
         --accent-green: #00ff88;
         --accent-red: #ff4757;
         --accent-amber: #ffb800;
-        --accent-purple: #a855f7;
-        --glow-cyan: rgba(0, 212, 255, 0.15);
-        --glow-green: rgba(0, 255, 136, 0.15);
-        --glow-red: rgba(255, 71, 87, 0.15);
     }
     
     .stApp {
         background: var(--bg-primary);
-        background-image: 
-            radial-gradient(ellipse at 0% 0%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
-            radial-gradient(ellipse at 100% 100%, rgba(0, 255, 136, 0.03) 0%, transparent 50%);
         font-family: 'Outfit', sans-serif;
     }
     
     .main .block-container {
-        padding: 1.5rem 2rem;
-        max-width: 1400px;
+        padding: 1rem 1rem;
+        max-width: 100%;
     }
-    
-    /* 스크롤바 */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-primary); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     
     /* 숨김 요소 */
     #MainMenu, footer, header, .stDeployButton { display: none !important; }
     
-    /* ========== 헤더 영역 ========== */
-    .header-container {
+    /* 헤더 */
+    .app-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        padding: 0.5rem 0 1.5rem 0;
+        justify-content: space-between;
+        padding: 12px 0;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 1.5rem;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 8px;
     }
     
-    .logo-section {
+    .logo-area {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     }
     
     .logo-icon {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
-        border-radius: 12px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
-        box-shadow: 0 0 20px var(--glow-cyan);
+        font-size: 20px;
     }
     
     .logo-text {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 22px;
+        font-size: 18px;
         font-weight: 700;
         background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        letter-spacing: -0.5px;
     }
     
-    .logo-version {
+    .date-info {
+        font-family: 'JetBrains Mono', monospace;
         font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 400;
-        margin-left: 8px;
-    }
-    
-    .header-meta {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-    
-    .data-timestamp {
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 12px;
-        color: var(--text-secondary);
-        font-family: 'JetBrains Mono', monospace;
     }
     
     .live-dot {
@@ -130,110 +104,92 @@ st.markdown("""
         background: var(--accent-green);
         border-radius: 50%;
         animation: pulse 2s infinite;
-        box-shadow: 0 0 8px var(--accent-green);
     }
     
     @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(0.9); }
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
     }
     
-    /* ========== 히어로 카드 - 현재가 ========== */
-    .hero-card {
-        background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(0, 255, 136, 0.05));
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        border-radius: 20px;
-        padding: 28px 32px;
-        margin-bottom: 20px;
-        position: relative;
-        overflow: hidden;
+    /* 가격 카드 */
+    .price-card {
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 255, 136, 0.05));
+        border: 1px solid rgba(0, 212, 255, 0.25);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 12px;
     }
     
-    .hero-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
-    }
-    
-    .hero-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 24px;
-    }
-    
-    .price-section {
-        display: flex;
-        align-items: baseline;
-        gap: 16px;
-    }
-    
-    .ticker-label {
-        font-size: 14px;
+    .ticker-name {
+        font-size: 13px;
         font-weight: 600;
         color: var(--text-secondary);
-        letter-spacing: 1px;
+        margin-bottom: 4px;
     }
     
-    .current-price {
+    .price-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .main-price {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 52px;
+        font-size: 42px;
         font-weight: 700;
         color: var(--text-primary);
-        line-height: 1;
-        text-shadow: 0 0 40px var(--glow-cyan);
     }
     
     .price-change {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-    
-    .change-value {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
     }
     
-    .change-percent {
+    .up { color: var(--accent-green); }
+    .down { color: var(--accent-red); }
+    
+    .regime-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 11px;
+        font-weight: 600;
+        margin-top: 12px;
     }
     
-    .change-up { color: var(--accent-green); }
-    .change-down { color: var(--accent-red); }
+    .regime-bull {
+        background: rgba(0, 255, 136, 0.15);
+        border: 1px solid rgba(0, 255, 136, 0.3);
+        color: var(--accent-green);
+    }
     
-    /* ========== 시그널 카드 ========== */
+    .regime-bear {
+        background: rgba(255, 71, 87, 0.15);
+        border: 1px solid rgba(255, 71, 87, 0.3);
+        color: var(--accent-red);
+    }
+    
+    /* 시그널 카드 */
     .signal-card {
         border-radius: 16px;
-        padding: 24px;
+        padding: 20px;
         text-align: center;
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    
-    .signal-card:hover {
-        transform: translateY(-2px);
+        margin-bottom: 12px;
     }
     
     .signal-buy {
-        background: linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 255, 136, 0.05));
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 255, 136, 0.05));
         border: 1px solid rgba(0, 255, 136, 0.3);
-        box-shadow: 0 0 30px var(--glow-green);
     }
     
     .signal-sell {
-        background: linear-gradient(135deg, rgba(255, 71, 87, 0.12), rgba(255, 71, 87, 0.05));
+        background: linear-gradient(135deg, rgba(255, 71, 87, 0.15), rgba(255, 71, 87, 0.05));
         border: 1px solid rgba(255, 71, 87, 0.3);
-        box-shadow: 0 0 30px var(--glow-red);
     }
     
     .signal-hold {
@@ -242,380 +198,251 @@ st.markdown("""
     }
     
     .signal-icon {
-        font-size: 36px;
-        margin-bottom: 8px;
+        font-size: 32px;
+        margin-bottom: 6px;
     }
     
     .signal-label {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 1px;
         margin-bottom: 4px;
     }
     
-    .signal-text {
+    .signal-action {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
     }
     
-    .signal-text-buy { color: var(--accent-green); }
-    .signal-text-sell { color: var(--accent-red); }
-    .signal-text-hold { color: var(--text-secondary); }
+    .signal-action.buy { color: var(--accent-green); }
+    .signal-action.sell { color: var(--accent-red); }
+    .signal-action.hold { color: var(--text-secondary); }
     
     .signal-detail {
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin-top: 6px;
-    }
-    
-    /* ========== 레짐 배지 ========== */
-    .regime-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border-radius: 100px;
-        font-family: 'JetBrains Mono', monospace;
         font-size: 12px;
-        font-weight: 600;
+        color: var(--text-secondary);
+        margin-top: 4px;
     }
     
-    .regime-bullish {
-        background: rgba(0, 255, 136, 0.1);
-        border: 1px solid rgba(0, 255, 136, 0.3);
-        color: var(--accent-green);
-    }
-    
-    .regime-bearish {
-        background: rgba(255, 71, 87, 0.1);
-        border: 1px solid rgba(255, 71, 87, 0.3);
-        color: var(--accent-red);
-    }
-    
-    /* ========== 포트폴리오 게이지 ========== */
+    /* 포트폴리오 */
     .portfolio-section {
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 20px;
+        padding: 16px;
+        margin-bottom: 12px;
     }
     
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    
-    .section-title {
-        font-size: 13px;
+    .section-label {
+        font-size: 11px;
         font-weight: 600;
-        color: var(--text-secondary);
+        color: var(--text-muted);
         letter-spacing: 1px;
-        text-transform: uppercase;
+        margin-bottom: 12px;
     }
     
-    .allocation-bar {
-        height: 48px;
-        background: var(--bg-secondary);
-        border-radius: 12px;
+    .alloc-bar {
+        height: 40px;
+        background: #1a1f26;
+        border-radius: 10px;
         overflow: hidden;
         display: flex;
-        position: relative;
+        margin-bottom: 12px;
     }
     
     .alloc-tqqq {
         background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
-        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: width 0.5s ease;
-        position: relative;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: #080b12;
+        transition: width 0.3s;
     }
     
     .alloc-cash {
-        background: linear-gradient(90deg, #2d333b, #3d444d);
-        height: 100%;
         flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-    
-    .alloc-label {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--bg-primary);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-    
-    .alloc-label-cash {
+        font-size: 13px;
+        font-weight: 600;
         color: var(--text-secondary);
-        text-shadow: none;
     }
     
-    .allocation-details {
+    .alloc-details {
         display: flex;
         justify-content: space-between;
-        margin-top: 16px;
     }
     
     .alloc-item {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
     
     .alloc-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
     }
     
-    .alloc-dot-tqqq {
-        background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
-    }
+    .dot-tqqq { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green)); }
+    .dot-cash { background: #3d444d; }
     
-    .alloc-dot-cash {
-        background: #3d444d;
-    }
-    
-    .alloc-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-    
-    .alloc-name {
-        font-size: 13px;
+    .alloc-text {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
         font-weight: 600;
         color: var(--text-primary);
     }
     
-    .alloc-value {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--accent-cyan);
-    }
-    
-    .alloc-value-cash {
-        color: var(--text-secondary);
-    }
-    
     .alloc-change {
-        font-family: 'JetBrains Mono', monospace;
         font-size: 12px;
-        margin-left: 8px;
+        margin-left: 4px;
     }
     
-    /* ========== MA 신호 그리드 ========== */
-    .ma-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 20px;
-    }
-    
-    @media (max-width: 768px) {
-        .ma-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-    
+    /* MA 카드 */
     .ma-card {
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 16px;
+        padding: 14px;
         text-align: center;
-        transition: all 0.2s;
+        height: 100%;
     }
     
-    .ma-card:hover {
-        border-color: var(--accent-cyan);
+    .ma-card.active {
+        border-color: rgba(0, 255, 136, 0.4);
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), transparent);
     }
     
-    .ma-card-active {
-        border-color: var(--accent-green);
-        background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), transparent);
+    .ma-card.inactive {
+        border-color: rgba(255, 71, 87, 0.4);
+        background: linear-gradient(135deg, rgba(255, 71, 87, 0.08), transparent);
     }
     
-    .ma-card-inactive {
-        border-color: var(--accent-red);
-        background: linear-gradient(135deg, rgba(255, 71, 87, 0.05), transparent);
-    }
-    
-    .ma-card-disabled {
+    .ma-card.disabled {
         opacity: 0.4;
     }
     
     .ma-period {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 700;
         color: var(--text-primary);
-        margin-bottom: 4px;
     }
     
     .ma-status {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        margin: 4px 0;
     }
     
-    .ma-status-above { color: var(--accent-green); }
-    .ma-status-below { color: var(--accent-red); }
-    .ma-status-disabled { color: var(--text-muted); }
+    .ma-status.above { color: var(--accent-green); }
+    .ma-status.below { color: var(--accent-red); }
+    .ma-status.na { color: var(--text-muted); }
     
-    .ma-deviation {
+    .ma-dev {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 13px;
         color: var(--text-secondary);
     }
     
     .ma-contrib {
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid var(--border);
         font-family: 'JetBrains Mono', monospace;
         font-size: 12px;
         font-weight: 600;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
     }
     
-    .ma-contrib-active { color: var(--accent-green); }
-    .ma-contrib-zero { color: var(--text-muted); }
+    .ma-contrib.positive { color: var(--accent-green); }
+    .ma-contrib.zero { color: var(--text-muted); }
     
-    /* ========== Stochastic 미터 ========== */
+    /* Stochastic */
     .stoch-section {
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 16px;
-        padding: 20px 24px;
-        margin-bottom: 20px;
+        padding: 16px;
+        margin-bottom: 12px;
     }
     
-    .stoch-content {
+    .stoch-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 12px;
     }
     
     .stoch-values {
         display: flex;
-        gap: 24px;
+        gap: 20px;
     }
     
     .stoch-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+        text-align: center;
     }
     
     .stoch-label {
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 10px;
         color: var(--text-muted);
-        letter-spacing: 1px;
+        margin-bottom: 2px;
     }
     
-    .stoch-value {
+    .stoch-val {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 700;
     }
     
     .stoch-k { color: var(--accent-cyan); }
     .stoch-d { color: var(--accent-amber); }
     
-    .stoch-meter {
-        flex: 1;
-        max-width: 300px;
-        height: 8px;
-        background: var(--bg-secondary);
-        border-radius: 4px;
-        position: relative;
-        overflow: visible;
-    }
-    
-    .stoch-marker {
-        position: absolute;
-        top: -4px;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        transform: translateX(-50%);
-        box-shadow: 0 0 10px;
-    }
-    
-    .stoch-marker-k {
-        background: var(--accent-cyan);
-        box-shadow: 0 0 10px var(--accent-cyan);
-    }
-    
-    .stoch-marker-d {
-        background: var(--accent-amber);
-        box-shadow: 0 0 10px var(--accent-amber);
-    }
-    
-    /* ========== 차트 영역 ========== */
-    .chart-section {
+    /* 차트 */
+    .chart-container {
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 20px;
+        padding: 12px;
+        margin-bottom: 12px;
     }
     
-    /* ========== 푸터 ========== */
-    .footer {
+    /* 푸터 */
+    .app-footer {
         text-align: center;
         color: var(--text-muted);
-        font-size: 11px;
-        padding: 16px 0;
+        font-size: 10px;
+        padding: 12px 0;
         border-top: 1px solid var(--border);
-        margin-top: 8px;
     }
     
-    /* ========== 버튼 오버라이드 ========== */
+    /* 버튼 */
     .stButton > button {
         background: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
         color: var(--text-secondary) !important;
         border-radius: 8px !important;
-        font-family: 'JetBrains Mono', monospace !important;
         font-size: 12px !important;
-        padding: 8px 16px !important;
-        transition: all 0.2s !important;
+        width: 100% !important;
     }
     
     .stButton > button:hover {
         border-color: var(--accent-cyan) !important;
         color: var(--accent-cyan) !important;
-        box-shadow: 0 0 15px var(--glow-cyan) !important;
-    }
-    
-    /* 반응형 */
-    @media (max-width: 640px) {
-        .current-price { font-size: 36px; }
-        .hero-content { flex-direction: column; align-items: flex-start; }
-        .allocation-details { flex-direction: column; gap: 12px; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------
-# 3. 분석기 클래스
+# 분석기 클래스
 # -----------------------------------------------------------
 class TQQQAnalyzer:
     def __init__(self):
@@ -700,157 +527,117 @@ class TQQQAnalyzer:
         }
 
 # -----------------------------------------------------------
-# 4. 메인 앱
+# 메인 앱
 # -----------------------------------------------------------
 def main():
     analyzer = TQQQAnalyzer()
     data = analyzer.get_data()
     
     if data is None:
-        st.error("데이터를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.")
+        st.error("데이터를 불러올 수 없습니다.")
         return
     
     data = analyzer.calculate_indicators(data)
-    result = analyzer.analyze(data)
+    r = analyzer.analyze(data)
+    
+    # 날짜 정보
+    day_names = ['월', '화', '수', '목', '금', '토', '일']
+    date_str = r['date'].strftime('%Y.%m.%d')
+    day_str = day_names[r['date'].weekday()]
     
     # ===== 헤더 =====
-    day_names = ['월', '화', '수', '목', '금', '토', '일']
-    date_str = result['date'].strftime('%Y.%m.%d')
-    day_str = day_names[result['date'].weekday()]
-    
     st.markdown(f"""
-    <div class="header-container">
-        <div class="logo-section">
+    <div class="app-header">
+        <div class="logo-area">
             <div class="logo-icon">⚡</div>
-            <div>
-                <span class="logo-text">TQQQ SNIPER</span>
-                <span class="logo-version">v6.0</span>
-            </div>
+            <span class="logo-text">TQQQ SNIPER</span>
         </div>
-        <div class="header-meta">
-            <div class="data-timestamp">
-                <div class="live-dot"></div>
-                {date_str} ({day_str}) 장마감
-            </div>
+        <div class="date-info">
+            <div class="live-dot"></div>
+            {date_str} ({day_str})
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # ===== 히어로 - 현재가 & 시그널 =====
-    price_up = result['price_change'] >= 0
-    change_class = 'change-up' if price_up else 'change-down'
+    # ===== 가격 카드 =====
+    price_up = r['price_change'] >= 0
+    change_class = 'up' if price_up else 'down'
     change_sign = '+' if price_up else ''
+    regime_class = 'regime-bull' if r['is_bullish'] else 'regime-bear'
+    regime_text = '📈 BULLISH' if r['is_bullish'] else '📉 BEARISH'
     
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        regime_class = 'regime-bullish' if result['is_bullish'] else 'regime-bearish'
-        regime_icon = '📈' if result['is_bullish'] else '📉'
-        regime_text = 'BULLISH' if result['is_bullish'] else 'BEARISH'
-        
-        st.markdown(f"""
-        <div class="hero-card">
-            <div class="hero-content">
-                <div>
-                    <div class="ticker-label">TQQQ</div>
-                    <div class="price-section">
-                        <div class="current-price">${result['price']:.2f}</div>
-                        <div class="price-change">
-                            <div class="change-value {change_class}">{change_sign}${abs(result['price_change']):.2f}</div>
-                            <div class="change-percent {change_class}">{change_sign}{result['price_change_pct']:.2f}%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="regime-badge {regime_class}">
-                    {regime_icon} {regime_text} REGIME
-                </div>
-            </div>
+    st.markdown(f"""
+    <div class="price-card">
+        <div class="ticker-name">TQQQ</div>
+        <div class="price-row">
+            <span class="main-price">${r['price']:.2f}</span>
+            <span class="price-change {change_class}">{change_sign}${abs(r['price_change']):.2f} ({change_sign}{r['price_change_pct']:.2f}%)</span>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="regime-pill {regime_class}">{regime_text}</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with col2:
-        # 시그널 카드
-        if result['change'] > 0.01:
-            signal_class = 'signal-buy'
-            signal_icon = '🚀'
-            signal_text = f"TQQQ {result['change']:.0%} 매수"
-            signal_text_class = 'signal-text-buy'
-            signal_detail = f"비중 {result['prev_tqqq']:.0%} → {result['tqqq']:.0%}"
-        elif result['change'] < -0.01:
-            signal_class = 'signal-sell'
-            signal_icon = '⚠️'
-            signal_text = f"TQQQ {abs(result['change']):.0%} 매도"
-            signal_text_class = 'signal-text-sell'
-            signal_detail = f"비중 {result['prev_tqqq']:.0%} → {result['tqqq']:.0%}"
-        else:
-            signal_class = 'signal-hold'
-            signal_icon = '☕'
-            signal_text = "HOLD"
-            signal_text_class = 'signal-text-hold'
-            signal_detail = "변동 없음"
-        
-        st.markdown(f"""
-        <div class="signal-card {signal_class}">
-            <div class="signal-icon">{signal_icon}</div>
-            <div class="signal-label">TODAY'S ACTION</div>
-            <div class="signal-text {signal_text_class}">{signal_text}</div>
-            <div class="signal-detail">{signal_detail}</div>
-        </div>
-        """, unsafe_allow_html=True)
+    # ===== 시그널 카드 =====
+    if r['change'] > 0.01:
+        sig_class, sig_icon = 'signal-buy', '🚀'
+        sig_text = f"TQQQ {r['change']:.0%} 매수"
+        sig_action_class = 'buy'
+    elif r['change'] < -0.01:
+        sig_class, sig_icon = 'signal-sell', '⚠️'
+        sig_text = f"TQQQ {abs(r['change']):.0%} 매도"
+        sig_action_class = 'sell'
+    else:
+        sig_class, sig_icon = 'signal-hold', '☕'
+        sig_text = "HOLD"
+        sig_action_class = 'hold'
     
-    # ===== 포트폴리오 배분 =====
-    tqqq_pct = result['tqqq'] * 100
-    cash_pct = result['cash'] * 100
-    change_sign = '+' if result['change'] >= 0 else ''
-    change_class = 'change-up' if result['change'] >= 0 else 'change-down'
+    sig_detail = f"비중 {r['prev_tqqq']:.0%} → {r['tqqq']:.0%}"
+    
+    st.markdown(f"""
+    <div class="signal-card {sig_class}">
+        <div class="signal-icon">{sig_icon}</div>
+        <div class="signal-label">TODAY'S ACTION</div>
+        <div class="signal-action {sig_action_class}">{sig_text}</div>
+        <div class="signal-detail">{sig_detail}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ===== 포트폴리오 =====
+    tqqq_pct = r['tqqq'] * 100
+    change_sign = '+' if r['change'] >= 0 else ''
+    change_class = 'up' if r['change'] >= 0 else 'down'
     
     st.markdown(f"""
     <div class="portfolio-section">
-        <div class="section-header">
-            <div class="section-title">📊 PORTFOLIO ALLOCATION</div>
+        <div class="section-label">📊 PORTFOLIO ALLOCATION</div>
+        <div class="alloc-bar">
+            <div class="alloc-tqqq" style="width: {max(tqqq_pct, 5)}%;">{'TQQQ ' + str(int(r['tqqq']*100)) + '%' if tqqq_pct >= 15 else ''}</div>
+            <div class="alloc-cash">CASH {int(r['cash']*100)}%</div>
         </div>
-        <div class="allocation-bar">
-            <div class="alloc-tqqq" style="width: {tqqq_pct}%;">
-                <span class="alloc-label">TQQQ {result['tqqq']:.0%}</span>
-            </div>
-            <div class="alloc-cash">
-                <span class="alloc-label alloc-label-cash">CASH {result['cash']:.0%}</span>
-            </div>
-        </div>
-        <div class="allocation-details">
+        <div class="alloc-details">
             <div class="alloc-item">
-                <div class="alloc-dot alloc-dot-tqqq"></div>
-                <div class="alloc-info">
-                    <div class="alloc-name">TQQQ</div>
-                    <div>
-                        <span class="alloc-value">{result['tqqq']:.0%}</span>
-                        <span class="alloc-change {change_class}">{change_sign}{result['change']:.0%}</span>
-                    </div>
-                </div>
+                <div class="alloc-dot dot-tqqq"></div>
+                <span class="alloc-text">TQQQ {r['tqqq']:.0%}</span>
+                <span class="alloc-change {change_class}">{change_sign}{r['change']:.0%}</span>
             </div>
             <div class="alloc-item">
-                <div class="alloc-dot alloc-dot-cash"></div>
-                <div class="alloc-info">
-                    <div class="alloc-name">CASH</div>
-                    <div>
-                        <span class="alloc-value alloc-value-cash">{result['cash']:.0%}</span>
-                    </div>
-                </div>
+                <div class="alloc-dot dot-cash"></div>
+                <span class="alloc-text">CASH {r['cash']:.0%}</span>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # ===== MA 신호 그리드 =====
-    st.markdown('<div class="section-title" style="margin-bottom: 12px;">📡 MA SIGNALS</div>', unsafe_allow_html=True)
+    # ===== MA Signals (Streamlit 네이티브 컴포넌트 사용) =====
+    st.markdown('<div class="section-label" style="margin: 16px 0 8px 0;">📡 MA SIGNALS</div>', unsafe_allow_html=True)
     
-    ma_html = '<div class="ma-grid">'
-    for ma in analyzer.ma_periods:
-        is_above = result['ma_signals'][ma]
-        dev = result['deviations'][ma]
+    cols = st.columns(4)
+    for i, ma in enumerate(analyzer.ma_periods):
+        is_above = r['ma_signals'][ma]
+        dev = r['deviations'][ma]
         
         # 비중 기여도 계산
-        if result['is_bullish']:
+        if r['is_bullish']:
             contrib = 25 if is_above else 0
             is_active = True
         else:
@@ -861,70 +648,65 @@ def main():
                 contrib = 0
                 is_active = False
         
-        # 카드 클래스
+        # 카드 스타일
         if not is_active:
-            card_class = 'ma-card-disabled'
-            status_class = 'ma-status-disabled'
+            card_class = 'disabled'
+            status_class = 'na'
             status_text = 'N/A'
         elif is_above:
-            card_class = 'ma-card-active'
-            status_class = 'ma-status-above'
+            card_class = 'active'
+            status_class = 'above'
             status_text = '▲ ABOVE'
         else:
-            card_class = 'ma-card-inactive'
-            status_class = 'ma-status-below'
+            card_class = 'inactive'
+            status_class = 'below'
             status_text = '▼ BELOW'
         
-        contrib_class = 'ma-contrib-active' if contrib > 0 else 'ma-contrib-zero'
+        contrib_class = 'positive' if contrib > 0 else 'zero'
         contrib_text = f'+{contrib}%' if contrib > 0 else '—'
         
-        ma_html += f"""
-        <div class="ma-card {card_class}">
-            <div class="ma-period">{ma}</div>
-            <div class="ma-status {status_class}">{status_text}</div>
-            <div class="ma-deviation">{dev:+.1f}%</div>
-            <div class="ma-contrib {contrib_class}">{contrib_text}</div>
-        </div>
-        """
-    ma_html += '</div>'
-    st.markdown(ma_html, unsafe_allow_html=True)
+        with cols[i]:
+            st.markdown(f"""
+            <div class="ma-card {card_class}">
+                <div class="ma-period">{ma}</div>
+                <div class="ma-status {status_class}">{status_text}</div>
+                <div class="ma-dev">{dev:+.1f}%</div>
+                <div class="ma-contrib {contrib_class}">{contrib_text}</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     # ===== Stochastic =====
     st.markdown(f"""
     <div class="stoch-section">
-        <div class="stoch-content">
+        <div class="section-label">📊 STOCHASTIC (166, 57, 19)</div>
+        <div class="stoch-row">
             <div class="stoch-values">
                 <div class="stoch-item">
                     <div class="stoch-label">%K</div>
-                    <div class="stoch-value stoch-k">{result['stoch_k']:.1f}</div>
+                    <div class="stoch-val stoch-k">{r['stoch_k']:.1f}</div>
                 </div>
                 <div class="stoch-item">
                     <div class="stoch-label">%D</div>
-                    <div class="stoch-value stoch-d">{result['stoch_d']:.1f}</div>
+                    <div class="stoch-val stoch-d">{r['stoch_d']:.1f}</div>
                 </div>
             </div>
-            <div class="stoch-meter">
-                <div class="stoch-marker stoch-marker-d" style="left: {result['stoch_d']}%;"></div>
-                <div class="stoch-marker stoch-marker-k" style="left: {result['stoch_k']}%;"></div>
-            </div>
-            <div class="regime-badge {'regime-bullish' if result['is_bullish'] else 'regime-bearish'}">
-                {'%K > %D' if result['is_bullish'] else '%K < %D'}
+            <div class="regime-pill {'regime-bull' if r['is_bullish'] else 'regime-bear'}">
+                {'%K > %D' if r['is_bullish'] else '%K < %D'}
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     # ===== 차트 =====
-    st.markdown('<div class="chart-section">', unsafe_allow_html=True)
+    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
     
-    chart_data = data.iloc[-100:]
+    chart_data = data.iloc[-80:]
     
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.08,
-        row_heights=[0.7, 0.3],
-        subplot_titles=('', '')
+        row_heights=[0.7, 0.3]
     )
     
     # 캔들스틱
@@ -937,8 +719,8 @@ def main():
         name='TQQQ',
         increasing_line_color='#00ff88',
         decreasing_line_color='#ff4757',
-        increasing_fillcolor='rgba(0, 255, 136, 0.8)',
-        decreasing_fillcolor='rgba(255, 71, 87, 0.8)'
+        increasing_fillcolor='#00ff88',
+        decreasing_fillcolor='#ff4757'
     ), row=1, col=1)
     
     # 이동평균선
@@ -949,61 +731,56 @@ def main():
             y=chart_data[f'MA{ma}'],
             name=f'MA{ma}',
             line=dict(color=ma_colors[i], width=1.5),
-            opacity=0.85
+            opacity=0.9
         ), row=1, col=1)
     
     # Stochastic
     fig.add_trace(go.Scatter(
-        x=chart_data.index,
-        y=chart_data['%K'],
-        name='%K',
-        line=dict(color='#00d4ff', width=2)
+        x=chart_data.index, y=chart_data['%K'],
+        name='%K', line=dict(color='#00d4ff', width=1.5)
     ), row=2, col=1)
     
     fig.add_trace(go.Scatter(
-        x=chart_data.index,
-        y=chart_data['%D'],
-        name='%D',
-        line=dict(color='#ffb800', width=2)
+        x=chart_data.index, y=chart_data['%D'],
+        name='%D', line=dict(color='#ffb800', width=1.5)
     ), row=2, col=1)
     
-    # 레이아웃
     fig.update_layout(
-        height=500,
-        margin=dict(l=0, r=0, t=10, b=0),
+        height=420,
+        margin=dict(l=0, r=0, t=0, b=0),
         template='plotly_dark',
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(13, 17, 23, 0.5)',
         xaxis_rangeslider_visible=False,
+        showlegend=True,
         legend=dict(
             orientation='h',
             yanchor='bottom',
             y=1.02,
-            xanchor='right',
-            x=1,
+            xanchor='center',
+            x=0.5,
             bgcolor='rgba(0,0,0,0)',
-            font=dict(size=11)
+            font=dict(size=10)
         ),
-        font=dict(family='JetBrains Mono, monospace', color='#8b949e', size=11)
+        font=dict(family='JetBrains Mono', color='#8b949e', size=10)
     )
     
-    fig.update_xaxes(gridcolor='rgba(48, 54, 61, 0.4)', showgrid=True)
-    fig.update_yaxes(gridcolor='rgba(48, 54, 61, 0.4)', showgrid=True)
+    fig.update_xaxes(gridcolor='rgba(48, 54, 61, 0.3)', showgrid=True)
+    fig.update_yaxes(gridcolor='rgba(48, 54, 61, 0.3)', showgrid=True)
     fig.update_yaxes(range=[0, 100], row=2, col=1)
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # ===== 푸터 =====
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("🔄 새로고침"):
-            st.cache_data.clear()
-            st.rerun()
+    # ===== 새로고침 버튼 =====
+    if st.button("🔄 새로고침"):
+        st.cache_data.clear()
+        st.rerun()
     
+    # ===== 푸터 =====
     st.markdown("""
-    <div class="footer">
-        TQQQ Sniper v6.0 · Strategy 3 Basic + Cash Defense · Not Financial Advice
+    <div class="app-footer">
+        TQQQ Sniper v6.1 · Strategy 3 Basic + Cash · Not Financial Advice
     </div>
     """, unsafe_allow_html=True)
 
