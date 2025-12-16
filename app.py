@@ -4,942 +4,1008 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import warnings
 warnings.filterwarnings('ignore')
 
 # -----------------------------------------------------------
-# 1. 페이지 설정 및 프리미엄 CSS 스타일링
+# 1. 페이지 설정
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ Sniper v5.1",
-    page_icon="🎯",
+    page_title="TQQQ Sniper",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 프리미엄 다크 테마 CSS
+# -----------------------------------------------------------
+# 2. 프리미엄 CSS - 트레이딩 터미널 스타일
+# -----------------------------------------------------------
 st.markdown("""
 <style>
-    /* 폰트 임포트 */
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
     
-    /* 전역 스타일 */
+    :root {
+        --bg-primary: #080b12;
+        --bg-secondary: #0d1117;
+        --bg-card: rgba(13, 17, 23, 0.8);
+        --border: rgba(48, 54, 61, 0.6);
+        --text-primary: #f0f6fc;
+        --text-secondary: #8b949e;
+        --text-muted: #484f58;
+        --accent-cyan: #00d4ff;
+        --accent-green: #00ff88;
+        --accent-red: #ff4757;
+        --accent-amber: #ffb800;
+        --accent-purple: #a855f7;
+        --glow-cyan: rgba(0, 212, 255, 0.15);
+        --glow-green: rgba(0, 255, 136, 0.15);
+        --glow-red: rgba(255, 71, 87, 0.15);
+    }
+    
     .stApp {
-        background: linear-gradient(135deg, #0a0b0f 0%, #0d0e14 50%, #0a0b0f 100%);
-        font-family: 'Inter', sans-serif;
+        background: var(--bg-primary);
+        background-image: 
+            radial-gradient(ellipse at 0% 0%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+            radial-gradient(ellipse at 100% 100%, rgba(0, 255, 136, 0.03) 0%, transparent 50%);
+        font-family: 'Outfit', sans-serif;
     }
     
-    /* 메인 컨테이너 */
     .main .block-container {
-        padding: 2rem 3rem;
-        max-width: 1200px;
+        padding: 1.5rem 2rem;
+        max-width: 1400px;
     }
     
-    /* 헤더 스타일 */
-    .premium-header {
+    /* 스크롤바 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    
+    /* 숨김 요소 */
+    #MainMenu, footer, header, .stDeployButton { display: none !important; }
+    
+    /* ========== 헤더 영역 ========== */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0 1.5rem 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+    }
+    
+    .logo-section {
         display: flex;
         align-items: center;
-        gap: 16px;
-        margin-bottom: 8px;
+        gap: 12px;
     }
     
-    .header-icon {
-        background: linear-gradient(135deg, #06b6d4, #10b981);
-        padding: 14px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 0 30px rgba(6, 182, 212, 0.3);
-    }
-    
-    .header-title {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 28px;
-        font-weight: 700;
-        background: linear-gradient(90deg, #06b6d4, #10b981, #06b6d4);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        letter-spacing: -0.5px;
-    }
-    
-    .header-version {
-        color: #64748b;
-        font-size: 14px;
-        font-weight: 400;
-    }
-    
-    .header-subtitle {
-        color: #64748b;
-        font-size: 11px;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-top: 2px;
-    }
-    
-    /* 날짜 배지 */
-    .date-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(30, 41, 59, 0.5);
-        border: 1px solid rgba(71, 85, 105, 0.3);
-        padding: 8px 14px;
-        border-radius: 10px;
-        margin: 16px 0 24px 0;
-    }
-    
-    .date-badge-icon {
-        color: #06b6d4;
-    }
-    
-    .date-badge-label {
-        color: #94a3b8;
-        font-size: 12px;
-    }
-    
-    .date-badge-value {
-        color: #06b6d4;
-        font-size: 12px;
-        font-weight: 600;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    /* 레짐 배지 */
-    .regime-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 10px;
-        font-size: 11px;
-        font-weight: 600;
-        font-family: 'JetBrains Mono', monospace;
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-    
-    .regime-bullish {
-        background: rgba(16, 185, 129, 0.15);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #10b981;
-    }
-    
-    .regime-bearish {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #ef4444;
-    }
-    
-    .regime-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-    }
-    
-    .regime-dot-bullish {
-        background: #10b981;
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-    }
-    
-    .regime-dot-bearish {
-        background: #ef4444;
-        box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
-    }
-    
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    /* 액션 카드 */
-    .action-card {
-        position: relative;
-        border-radius: 16px;
-        padding: 2px;
-        margin-bottom: 24px;
-        overflow: hidden;
-    }
-    
-    .action-card-buy {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.3));
-    }
-    
-    .action-card-sell {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(236, 72, 153, 0.3));
-    }
-    
-    .action-card-hold {
-        background: rgba(51, 65, 85, 0.3);
-    }
-    
-    .action-card-inner {
-        background: #0d0e14;
-        border-radius: 14px;
-        padding: 20px 24px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-    
-    .action-icon {
-        width: 48px;
-        height: 48px;
+    .logo-icon {
+        width: 44px;
+        height: 44px;
+        background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 22px;
+        box-shadow: 0 0 20px var(--glow-cyan);
     }
     
-    .action-icon-buy {
-        background: rgba(16, 185, 129, 0.2);
+    .logo-text {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 22px;
+        font-weight: 700;
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
     }
     
-    .action-icon-sell {
-        background: rgba(239, 68, 68, 0.2);
+    .logo-version {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 400;
+        margin-left: 8px;
     }
     
-    .action-icon-hold {
-        background: rgba(100, 116, 139, 0.2);
+    .header-meta {
+        display: flex;
+        align-items: center;
+        gap: 16px;
     }
     
-    .action-content {
-        flex: 1;
+    .data-timestamp {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
     }
     
-    .action-label {
-        color: #94a3b8;
-        font-size: 13px;
+    .live-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--accent-green);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+        box-shadow: 0 0 8px var(--accent-green);
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.9); }
+    }
+    
+    /* ========== 히어로 카드 - 현재가 ========== */
+    .hero-card {
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(0, 255, 136, 0.05));
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        border-radius: 20px;
+        padding: 28px 32px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    }
+    
+    .hero-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 24px;
+    }
+    
+    .price-section {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+    }
+    
+    .ticker-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+    }
+    
+    .current-price {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 52px;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+        text-shadow: 0 0 40px var(--glow-cyan);
+    }
+    
+    .price-change {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .change-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .change-percent {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .change-up { color: var(--accent-green); }
+    .change-down { color: var(--accent-red); }
+    
+    /* ========== 시그널 카드 ========== */
+    .signal-card {
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .signal-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .signal-buy {
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.12), rgba(0, 255, 136, 0.05));
+        border: 1px solid rgba(0, 255, 136, 0.3);
+        box-shadow: 0 0 30px var(--glow-green);
+    }
+    
+    .signal-sell {
+        background: linear-gradient(135deg, rgba(255, 71, 87, 0.12), rgba(255, 71, 87, 0.05));
+        border: 1px solid rgba(255, 71, 87, 0.3);
+        box-shadow: 0 0 30px var(--glow-red);
+    }
+    
+    .signal-hold {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+    }
+    
+    .signal-icon {
+        font-size: 36px;
+        margin-bottom: 8px;
+    }
+    
+    .signal-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
         margin-bottom: 4px;
     }
     
-    .action-text {
-        font-size: 18px;
-        font-weight: 700;
+    .signal-text {
         font-family: 'JetBrains Mono', monospace;
-        white-space: nowrap;
+        font-size: 20px;
+        font-weight: 700;
     }
     
-    .action-text-buy {
-        color: #10b981;
+    .signal-text-buy { color: var(--accent-green); }
+    .signal-text-sell { color: var(--accent-red); }
+    .signal-text-hold { color: var(--text-secondary); }
+    
+    .signal-detail {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 6px;
     }
     
-    .action-text-sell {
-        color: #ef4444;
-    }
-    
-    .action-text-hold {
-        color: #94a3b8;
-    }
-    
-    /* 섹션 타이틀 */
-    .section-title {
-        display: flex;
+    /* ========== 레짐 배지 ========== */
+    .regime-badge {
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-        color: #94a3b8;
+        padding: 8px 16px;
+        border-radius: 100px;
+        font-family: 'JetBrains Mono', monospace;
         font-size: 12px;
         font-weight: 600;
+    }
+    
+    .regime-bullish {
+        background: rgba(0, 255, 136, 0.1);
+        border: 1px solid rgba(0, 255, 136, 0.3);
+        color: var(--accent-green);
+    }
+    
+    .regime-bearish {
+        background: rgba(255, 71, 87, 0.1);
+        border: 1px solid rgba(255, 71, 87, 0.3);
+        color: var(--accent-red);
+    }
+    
+    /* ========== 포트폴리오 게이지 ========== */
+    .portfolio-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
         letter-spacing: 1px;
         text-transform: uppercase;
-        margin-bottom: 16px;
-        font-family: 'JetBrains Mono', monospace;
     }
     
-    /* 포트폴리오 카드 */
-    .portfolio-card {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.5));
-        border: 1px solid rgba(71, 85, 105, 0.3);
-        border-radius: 16px;
-        padding: 20px;
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-    
-    .portfolio-card:hover {
-        border-color: rgba(6, 182, 212, 0.3);
-        box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
-    }
-    
-    .portfolio-card-cash:hover {
-        border-color: rgba(245, 158, 11, 0.3);
-        box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
-    }
-    
-    .portfolio-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-    }
-    
-    .portfolio-label {
-        color: #64748b;
-        font-size: 12px;
-        font-weight: 600;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .portfolio-change {
-        font-size: 12px;
-        font-weight: 600;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .portfolio-change-up {
-        color: #10b981;
-    }
-    
-    .portfolio-change-down {
-        color: #ef4444;
-    }
-    
-    .portfolio-change-neutral {
-        color: #64748b;
-    }
-    
-    .portfolio-value {
-        font-size: 32px;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
-        margin-bottom: 12px;
-    }
-    
-    .portfolio-value-tqqq {
-        color: #06b6d4;
-    }
-    
-    .portfolio-value-cash {
-        color: #f59e0b;
-    }
-    
-    /* 커스텀 프로그레스 바 */
-    .progress-container {
-        height: 8px;
-        background: rgba(51, 65, 85, 0.5);
-        border-radius: 4px;
+    .allocation-bar {
+        height: 48px;
+        background: var(--bg-secondary);
+        border-radius: 12px;
         overflow: hidden;
+        display: flex;
+        position: relative;
     }
     
-    .progress-bar {
+    .alloc-tqqq {
+        background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
         height: 100%;
-        border-radius: 4px;
-        transition: width 0.5s ease;
-    }
-    
-    .progress-tqqq {
-        background: linear-gradient(90deg, #06b6d4, #10b981);
-    }
-    
-    .progress-cash {
-        background: linear-gradient(90deg, #f59e0b, #fbbf24);
-    }
-    
-    /* Stochastic 카드 */
-    .stoch-card {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.3), rgba(15, 23, 42, 0.3));
-        border: 1px solid rgba(71, 85, 105, 0.3);
-        border-radius: 16px;
-        padding: 12px 16px;
-        margin-top: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: nowrap;
-        gap: 8px;
-    }
-    
-    .stoch-info {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-        flex: 1;
-    }
-    
-    .stoch-icon {
-        width: 36px;
-        height: 36px;
-        min-width: 36px;
-        background: rgba(139, 92, 246, 0.2);
-        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        transition: width 0.5s ease;
+        position: relative;
     }
     
-    .stoch-label {
-        color: #64748b;
-        font-size: 10px;
-        margin-bottom: 2px;
-        white-space: nowrap;
+    .alloc-cash {
+        background: linear-gradient(90deg, #2d333b, #3d444d);
+        height: 100%;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    .stoch-values {
-        font-size: 13px;
-        font-weight: 600;
+    .alloc-label {
         font-family: 'JetBrains Mono', monospace;
-        white-space: nowrap;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--bg-primary);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
     
-    .stoch-k {
-        color: #06b6d4;
+    .alloc-label-cash {
+        color: var(--text-secondary);
+        text-shadow: none;
     }
     
-    .stoch-d {
-        color: #f59e0b;
+    .allocation-details {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 16px;
     }
     
-    .stoch-sep {
-        color: #64748b;
-        margin: 0 4px;
+    .alloc-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     
-    /* 구분선 */
-    .divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(71, 85, 105, 0.5), transparent);
-        margin: 24px 0;
-    }
-    
-    /* 푸터 */
-    .footer {
-        text-align: center;
-        color: #475569;
-        font-size: 11px;
-        margin-top: 32px;
-        padding-top: 16px;
-        border-top: 1px solid rgba(71, 85, 105, 0.2);
-    }
-    
-    /* 버튼 스타일 */
-    .stButton > button {
-        background: rgba(30, 41, 59, 0.5);
-        border: 1px solid rgba(71, 85, 105, 0.5);
-        color: #94a3b8;
-        border-radius: 10px;
-        padding: 8px 16px;
-        font-family: 'JetBrains Mono', monospace;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton > button:hover {
-        background: rgba(6, 182, 212, 0.1);
-        border-color: rgba(6, 182, 212, 0.3);
-        color: #06b6d4;
-    }
-    
-    /* Plotly 차트 배경 */
-    .js-plotly-plot {
-        border-radius: 16px;
-        overflow: hidden;
-    }
-    
-    /* 스크롤바 */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: #0a0b0f;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: #334155;
+    .alloc-dot {
+        width: 12px;
+        height: 12px;
         border-radius: 4px;
     }
     
-    ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
+    .alloc-dot-tqqq {
+        background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
     }
     
-    /* 숨기기 */
-    #MainMenu, footer, header {
-        visibility: hidden;
+    .alloc-dot-cash {
+        background: #3d444d;
     }
     
-    .stDeployButton {
-        display: none;
+    .alloc-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .alloc-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .alloc-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--accent-cyan);
+    }
+    
+    .alloc-value-cash {
+        color: var(--text-secondary);
+    }
+    
+    .alloc-change {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        margin-left: 8px;
+    }
+    
+    /* ========== MA 신호 그리드 ========== */
+    .ma-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .ma-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    .ma-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    
+    .ma-card:hover {
+        border-color: var(--accent-cyan);
+    }
+    
+    .ma-card-active {
+        border-color: var(--accent-green);
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), transparent);
+    }
+    
+    .ma-card-inactive {
+        border-color: var(--accent-red);
+        background: linear-gradient(135deg, rgba(255, 71, 87, 0.05), transparent);
+    }
+    
+    .ma-card-disabled {
+        opacity: 0.4;
+    }
+    
+    .ma-period {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    
+    .ma-status {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+    
+    .ma-status-above { color: var(--accent-green); }
+    .ma-status-below { color: var(--accent-red); }
+    .ma-status-disabled { color: var(--text-muted); }
+    
+    .ma-deviation {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    
+    .ma-contrib {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .ma-contrib-active { color: var(--accent-green); }
+    .ma-contrib-zero { color: var(--text-muted); }
+    
+    /* ========== Stochastic 미터 ========== */
+    .stoch-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+    }
+    
+    .stoch-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    
+    .stoch-values {
+        display: flex;
+        gap: 24px;
+    }
+    
+    .stoch-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .stoch-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+    }
+    
+    .stoch-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 28px;
+        font-weight: 700;
+    }
+    
+    .stoch-k { color: var(--accent-cyan); }
+    .stoch-d { color: var(--accent-amber); }
+    
+    .stoch-meter {
+        flex: 1;
+        max-width: 300px;
+        height: 8px;
+        background: var(--bg-secondary);
+        border-radius: 4px;
+        position: relative;
+        overflow: visible;
+    }
+    
+    .stoch-marker {
+        position: absolute;
+        top: -4px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        transform: translateX(-50%);
+        box-shadow: 0 0 10px;
+    }
+    
+    .stoch-marker-k {
+        background: var(--accent-cyan);
+        box-shadow: 0 0 10px var(--accent-cyan);
+    }
+    
+    .stoch-marker-d {
+        background: var(--accent-amber);
+        box-shadow: 0 0 10px var(--accent-amber);
+    }
+    
+    /* ========== 차트 영역 ========== */
+    .chart-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    /* ========== 푸터 ========== */
+    .footer {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 11px;
+        padding: 16px 0;
+        border-top: 1px solid var(--border);
+        margin-top: 8px;
+    }
+    
+    /* ========== 버튼 오버라이드 ========== */
+    .stButton > button {
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border) !important;
+        color: var(--text-secondary) !important;
+        border-radius: 8px !important;
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 12px !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s !important;
+    }
+    
+    .stButton > button:hover {
+        border-color: var(--accent-cyan) !important;
+        color: var(--accent-cyan) !important;
+        box-shadow: 0 0 15px var(--glow-cyan) !important;
+    }
+    
+    /* 반응형 */
+    @media (max-width: 640px) {
+        .current-price { font-size: 36px; }
+        .hero-content { flex-direction: column; align-items: flex-start; }
+        .allocation-details { flex-direction: column; gap: 12px; }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------
-# 2. 분석기 클래스 정의
+# 3. 분석기 클래스
 # -----------------------------------------------------------
-class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v5.1 (기본 전략 Only, Cash 방어)"""
-
+class TQQQAnalyzer:
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
         self.ma_periods = [20, 45, 151, 212]
 
     @st.cache_data(ttl=300)
-    def get_latest_data(_self, days_back=400):
+    def get_data(_self, days_back=400):
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
-            # TQQQ만 다운로드 (Cash는 가격 데이터 불필요)
             ticker = yf.Ticker('TQQQ')
-            stock_data = ticker.history(start=start_date, end=end_date, auto_adjust=True)
-            
-            if stock_data.empty:
-                st.error("TQQQ 데이터를 가져올 수 없습니다.")
+            data = ticker.history(start=start_date, end=end_date, auto_adjust=True)
+            if data.empty:
                 return None
-            
-            # 컬럼명 정리
-            combined_data = pd.DataFrame()
-            combined_data['TQQQ_Open'] = stock_data['Open']
-            combined_data['TQQQ_High'] = stock_data['High']
-            combined_data['TQQQ_Low'] = stock_data['Low']
-            combined_data['TQQQ_Close'] = stock_data['Close']
-            
-            return combined_data.dropna()
+            df = pd.DataFrame({
+                'Open': data['Open'],
+                'High': data['High'],
+                'Low': data['Low'],
+                'Close': data['Close']
+            })
+            return df.dropna()
         except Exception as e:
-            st.error(f"데이터 오류: {e}")
+            st.error(f"데이터 로드 실패: {e}")
             return None
 
-    def calculate_technical_indicators(self, data):
+    def calculate_indicators(self, data):
         df = data.copy()
-        period, k_p, d_p = self.stoch_config.values()
+        p, k, d = self.stoch_config.values()
         
-        df['Highest_High'] = df['TQQQ_High'].rolling(window=period).max()
-        df['Lowest_Low'] = df['TQQQ_Low'].rolling(window=period).min()
-        df['%K'] = ((df['TQQQ_Close'] - df['Lowest_Low']) / (df['Highest_High'] - df['Lowest_Low']) * 100).rolling(window=k_p).mean()
-        df['%D'] = df['%K'].rolling(window=d_p).mean()
+        df['HH'] = df['High'].rolling(window=p).max()
+        df['LL'] = df['Low'].rolling(window=p).min()
+        df['%K'] = ((df['Close'] - df['LL']) / (df['HH'] - df['LL']) * 100).rolling(window=k).mean()
+        df['%D'] = df['%K'].rolling(window=d).mean()
         
         for ma in self.ma_periods:
-            df[f'MA_{ma}'] = df['TQQQ_Close'].rolling(window=ma).mean()
-            df[f'Deviation_{ma}'] = ((df['TQQQ_Close'] - df[f'MA_{ma}']) / df[f'MA_{ma}']) * 100
+            df[f'MA{ma}'] = df['Close'].rolling(window=ma).mean()
+            df[f'Dev{ma}'] = ((df['Close'] - df[f'MA{ma}']) / df[f'MA{ma}']) * 100
+        
         return df.dropna()
 
-    def analyze_portfolio(self, data):
-        target_data = data.iloc[-1]
+    def analyze(self, data):
+        curr = data.iloc[-1]
+        prev = data.iloc[-2]
         
-        is_bullish = target_data['%K'] > target_data['%D']
-        ma_signals = {p: target_data['TQQQ_Close'] > target_data[f'MA_{p}'] for p in self.ma_periods}
+        is_bullish = curr['%K'] > curr['%D']
+        ma_signals = {p: curr['Close'] > curr[f'MA{p}'] for p in self.ma_periods}
         
-        if is_bullish: 
-            base_tqqq = sum(ma_signals.values()) * 0.25
-        else: 
-            base_tqqq = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5
+        if is_bullish:
+            tqqq_ratio = sum(ma_signals.values()) * 0.25
+        else:
+            tqqq_ratio = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5
         
-        base_cash = 1 - base_tqqq
-            
+        cash_ratio = 1 - tqqq_ratio
+        
+        # 전일 비중
+        prev_bullish = prev['%K'] > prev['%D']
+        prev_ma = {p: prev['Close'] > prev[f'MA{p}'] for p in self.ma_periods}
+        if prev_bullish:
+            prev_tqqq = sum(prev_ma.values()) * 0.25
+        else:
+            prev_tqqq = (int(prev_ma[20]) + int(prev_ma[45])) * 0.5
+        
+        change = tqqq_ratio - prev_tqqq
+        
         return {
-            'final_tqqq': base_tqqq, 
-            'final_cash': base_cash,
+            'price': curr['Close'],
+            'prev_price': prev['Close'],
+            'price_change': curr['Close'] - prev['Close'],
+            'price_change_pct': (curr['Close'] - prev['Close']) / prev['Close'] * 100,
+            'tqqq': tqqq_ratio,
+            'cash': cash_ratio,
+            'prev_tqqq': prev_tqqq,
+            'change': change,
             'is_bullish': is_bullish,
-            'ma_signals': ma_signals
+            'ma_signals': ma_signals,
+            'stoch_k': curr['%K'],
+            'stoch_d': curr['%D'],
+            'deviations': {p: curr[f'Dev{p}'] for p in self.ma_periods},
+            'ma_values': {p: curr[f'MA{p}'] for p in self.ma_periods},
+            'date': curr.name
         }
 
-    def analyze_all(self, data):
-        today = self.analyze_portfolio(data)
-        data_prev = data.iloc[:-1]
-        yesterday = self.analyze_portfolio(data_prev)
-        
-        changes = {
-            'tqqq': today['final_tqqq'] - yesterday['final_tqqq'], 
-            'cash': today['final_cash'] - yesterday['final_cash']
-        }
-        
-        actions = []
-        tqqq_chg = changes['tqqq']
-        if tqqq_chg > 0.01: 
-            actions.append({'action': '매수', 'asset': 'TQQQ', 'amt': tqqq_chg})
-        elif tqqq_chg < -0.01: 
-            actions.append({'action': '매도', 'asset': 'TQQQ', 'amt': abs(tqqq_chg)})
-        
-        return today, yesterday, changes, actions
-
-
 # -----------------------------------------------------------
-# 3. 헬퍼 함수
+# 4. 메인 앱
 # -----------------------------------------------------------
-def render_action_card(actions):
-    if actions:
-        for a in actions:
-            if a['action'] == '매수':
-                st.markdown(f"""
-                <div class="action-card action-card-buy">
-                    <div class="action-card-inner">
-                        <div class="action-icon action-icon-buy">⚡</div>
-                        <div class="action-content">
-                            <div class="action-label">Action Required</div>
-                            <div class="action-text action-text-buy">{a['asset']} {a['amt']:.1%} 매수</div>
-                        </div>
-                        <div style="color: #10b981; font-size: 24px;">→</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="action-card action-card-sell">
-                    <div class="action-card-inner">
-                        <div class="action-icon action-icon-sell">⚠️</div>
-                        <div class="action-content">
-                            <div class="action-label">Action Required</div>
-                            <div class="action-text action-text-sell">{a['asset']} {a['amt']:.1%} 매도</div>
-                        </div>
-                        <div style="color: #ef4444; font-size: 24px;">→</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="action-card action-card-hold">
-            <div class="action-card-inner">
-                <div class="action-icon action-icon-hold">🛡️</div>
-                <div class="action-content">
-                    <div class="action-label">No Action Required</div>
-                    <div class="action-text action-text-hold">홀딩 유지 ☕</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-def render_portfolio_card(asset, value, change, prev_value):
-    colors = {
-        'TQQQ': {'value': 'portfolio-value-tqqq', 'progress': 'progress-tqqq', 'hover': ''},
-        'CASH': {'value': 'portfolio-value-cash', 'progress': 'progress-cash', 'hover': 'portfolio-card-cash'},
-    }
+def main():
+    analyzer = TQQQAnalyzer()
+    data = analyzer.get_data()
     
-    change_class = 'portfolio-change-neutral'
-    change_prefix = ''
-    if change > 0.001:
-        change_class = 'portfolio-change-up'
-        change_prefix = '+'
-    elif change < -0.001:
-        change_class = 'portfolio-change-down'
+    if data is None:
+        st.error("데이터를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.")
+        return
     
-    change_text = f"{change_prefix}{change:.0%}" if abs(change) > 0.001 else "—"
+    data = analyzer.calculate_indicators(data)
+    result = analyzer.analyze(data)
+    
+    # ===== 헤더 =====
+    day_names = ['월', '화', '수', '목', '금', '토', '일']
+    date_str = result['date'].strftime('%Y.%m.%d')
+    day_str = day_names[result['date'].weekday()]
     
     st.markdown(f"""
-    <div class="portfolio-card {colors[asset]['hover']}">
-        <div class="portfolio-header">
-            <span class="portfolio-label">{asset}</span>
-            <span class="portfolio-change {change_class}">{change_text}</span>
+    <div class="header-container">
+        <div class="logo-section">
+            <div class="logo-icon">⚡</div>
+            <div>
+                <span class="logo-text">TQQQ SNIPER</span>
+                <span class="logo-version">v6.0</span>
+            </div>
         </div>
-        <div class="portfolio-value {colors[asset]['value']}">{value:.0%}</div>
-        <div class="progress-container">
-            <div class="progress-bar {colors[asset]['progress']}" style="width: {value*100}%"></div>
+        <div class="header-meta">
+            <div class="data-timestamp">
+                <div class="live-dot"></div>
+                {date_str} ({day_str}) 장마감
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-
-def render_base_strategy_card(ma, latest, is_bullish, ma_periods):
-    """기본 전략 카드 렌더링"""
-    price = latest['TQQQ_Close']
-    ma_value = latest[f'MA_{ma}']
-    deviation = latest[f'Deviation_{ma}']
-    is_above = price > ma_value
     
-    # 상승장: 모든 MA 25%씩 기여
-    # 하락장: MA20, MA45만 50%씩 기여
-    if is_bullish:
-        contribution = 0.25 if is_above else 0
-        is_active_in_regime = True
-    else:
-        if ma in [20, 45]:
-            contribution = 0.5 if is_above else 0
-            is_active_in_regime = True
-        else:
-            contribution = 0
-            is_active_in_regime = False
+    # ===== 히어로 - 현재가 & 시그널 =====
+    price_up = result['price_change'] >= 0
+    change_class = 'change-up' if price_up else 'change-down'
+    change_sign = '+' if price_up else ''
     
-    # 스타일 결정
-    if not is_active_in_regime:
-        icon_bg = "rgba(71, 85, 105, 0.2)"
-        icon_color = "#475569"
-        status_text = "🚫 하락장 미적용"
-        status_color = "#475569"
-        prog_color = "linear-gradient(90deg, #334155, #475569)"
-    elif is_above:
-        icon_bg = "rgba(16, 185, 129, 0.2)"
-        icon_color = "#10b981"
-        status_text = f"✅ MA 상회 (+{deviation:.1f}%)"
-        status_color = "#10b981"
-        prog_color = "linear-gradient(90deg, #10b981, #06b6d4)"
-    else:
-        icon_bg = "rgba(239, 68, 68, 0.2)"
-        icon_color = "#ef4444"
-        status_text = f"❌ MA 하회 ({deviation:.1f}%)"
-        status_color = "#ef4444"
-        prog_color = "linear-gradient(90deg, #475569, #64748b)"
+    col1, col2 = st.columns([2, 1])
     
-    # 비중 기여도 텍스트
-    if not is_active_in_regime:
-        contrib_text = "—"
-        contrib_color = "#475569"
-    elif contribution > 0:
-        contrib_text = f"+{contribution:.0%}"
-        contrib_color = "#10b981"
-    else:
-        contrib_text = "0%"
-        contrib_color = "#64748b"
-    
-    with st.container():
-        col1, col2, col3 = st.columns([1, 3, 2])
-        
-        with col1:
-            st.markdown(f"""
-            <div style="width: 45px; height: 45px; background: {icon_bg}; 
-                        border-radius: 10px; display: flex; align-items: center; justify-content: center; 
-                        font-size: 14px; font-weight: 700; color: {icon_color}; 
-                        font-family: 'JetBrains Mono', monospace;">{ma}</div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            regime_note = ""
-            if is_bullish:
-                regime_note = "(25%)"
-            else:
-                regime_note = "(50%)" if ma in [20, 45] else ""
-            st.markdown(f"""
-            <div style="font-weight: 600; color: #e2e8f0; font-size: 14px; margin-bottom: 2px;">MA{ma} <span style="color: #64748b; font-size: 11px;">{regime_note}</span></div>
-            <div style="color: {status_color}; font-size: 12px;">{status_text}</div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div style="text-align: right;">
-                <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">TQQQ 비중 기여</div>
-                <div style="font-size: 18px; font-weight: 700; color: {contrib_color}; font-family: 'JetBrains Mono', monospace;">{contrib_text}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # 프로그레스 바 (MA 대비 가격 위치 시각화)
-        # 0% = MA 대비 -30%, 100% = MA 대비 +30%
-        normalized = (deviation + 30) / 60 * 100
-        normalized = max(0, min(100, normalized))
-        
-        st.markdown(f"""
-        <div style="position: relative; height: 6px; background: rgba(51, 65, 85, 0.5); border-radius: 3px; overflow: visible; margin: 8px 0;">
-            <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 6px; background: #64748b;"></div>
-            <div style="height: 100%; width: {normalized}%; background: {prog_color}; border-radius: 3px;"></div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 가격 정보
-        st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; color: #64748b; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
-            <span>현재가: ${price:.2f}</span>
-            <span>MA{ma}: ${ma_value:.2f}</span>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-
-
-# -----------------------------------------------------------
-# 4. 메인 실행 함수
-# -----------------------------------------------------------
-def main():
-    # 헤더
-    col1, col2 = st.columns([4, 1])
     with col1:
-        st.markdown("""
-        <div class="premium-header">
-            <div class="header-icon">🎯</div>
-            <div>
+        regime_class = 'regime-bullish' if result['is_bullish'] else 'regime-bearish'
+        regime_icon = '📈' if result['is_bullish'] else '📉'
+        regime_text = 'BULLISH' if result['is_bullish'] else 'BEARISH'
+        
+        st.markdown(f"""
+        <div class="hero-card">
+            <div class="hero-content">
                 <div>
-                    <span class="header-title">TQQQ SNIPER</span>
-                    <span class="header-version">v5.1</span>
+                    <div class="ticker-label">TQQQ</div>
+                    <div class="price-section">
+                        <div class="current-price">${result['price']:.2f}</div>
+                        <div class="price-change">
+                            <div class="change-value {change_class}">{change_sign}${abs(result['price_change']):.2f}</div>
+                            <div class="change-percent {change_class}">{change_sign}{result['price_change_pct']:.2f}%</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="header-subtitle">Strategy 3 Basic + Cash Defense</div>
+                <div class="regime-badge {regime_class}">
+                    {regime_icon} {regime_text} REGIME
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+    
     with col2:
-        if st.button("🔄 Refresh"):
-            st.cache_data.clear()
-            st.rerun()
+        # 시그널 카드
+        if result['change'] > 0.01:
+            signal_class = 'signal-buy'
+            signal_icon = '🚀'
+            signal_text = f"TQQQ {result['change']:.0%} 매수"
+            signal_text_class = 'signal-text-buy'
+            signal_detail = f"비중 {result['prev_tqqq']:.0%} → {result['tqqq']:.0%}"
+        elif result['change'] < -0.01:
+            signal_class = 'signal-sell'
+            signal_icon = '⚠️'
+            signal_text = f"TQQQ {abs(result['change']):.0%} 매도"
+            signal_text_class = 'signal-text-sell'
+            signal_detail = f"비중 {result['prev_tqqq']:.0%} → {result['tqqq']:.0%}"
+        else:
+            signal_class = 'signal-hold'
+            signal_icon = '☕'
+            signal_text = "HOLD"
+            signal_text_class = 'signal-text-hold'
+            signal_detail = "변동 없음"
+        
+        st.markdown(f"""
+        <div class="signal-card {signal_class}">
+            <div class="signal-icon">{signal_icon}</div>
+            <div class="signal-label">TODAY'S ACTION</div>
+            <div class="signal-text {signal_text_class}">{signal_text}</div>
+            <div class="signal-detail">{signal_detail}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    analyzer = RealTimeInvestmentAnalyzer()
-    data = analyzer.get_latest_data()
+    # ===== 포트폴리오 배분 =====
+    tqqq_pct = result['tqqq'] * 100
+    cash_pct = result['cash'] * 100
+    change_sign = '+' if result['change'] >= 0 else ''
+    change_class = 'change-up' if result['change'] >= 0 else 'change-down'
     
-    if data is not None:
-        data = analyzer.calculate_technical_indicators(data)
-        latest = data.iloc[-1]
-        
-        # 날짜 및 레짐 배지
-        day_map = {0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'}
-        weekday_str = day_map[latest.name.weekday()]
-        data_date = latest.name.strftime('%Y-%m-%d')
-        
-        res_today, res_prev, changes, actions = analyzer.analyze_all(data)
-        
-        regime_class = 'regime-bullish' if res_today['is_bullish'] else 'regime-bearish'
-        regime_dot_class = 'regime-dot-bullish' if res_today['is_bullish'] else 'regime-dot-bearish'
-        regime_text = 'BULLISH' if res_today['is_bullish'] else 'BEARISH'
-        
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.markdown(f"""
-            <div class="date-badge">
-                <span class="date-badge-icon">📅</span>
-                <span class="date-badge-label">데이터 기준:</span>
-                <span class="date-badge-value">{data_date} ({weekday_str}) 장마감</span>
+    st.markdown(f"""
+    <div class="portfolio-section">
+        <div class="section-header">
+            <div class="section-title">📊 PORTFOLIO ALLOCATION</div>
+        </div>
+        <div class="allocation-bar">
+            <div class="alloc-tqqq" style="width: {tqqq_pct}%;">
+                <span class="alloc-label">TQQQ {result['tqqq']:.0%}</span>
             </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.markdown(f"""
-            <div class="regime-badge {regime_class}">
-                <div class="regime-dot {regime_dot_class}"></div>
-                {regime_text} REGIME
+            <div class="alloc-cash">
+                <span class="alloc-label alloc-label-cash">CASH {result['cash']:.0%}</span>
             </div>
-            """, unsafe_allow_html=True)
-        
-        # 액션 카드
-        render_action_card(actions)
-        
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-        
-        # 포트폴리오 구성
-        st.markdown("""
-        <div class="section-title">
-            <span>📊</span> PORTFOLIO COMPOSITION
         </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            render_portfolio_card('TQQQ', res_today['final_tqqq'], changes['tqqq'], res_prev['final_tqqq'])
-        with col2:
-            render_portfolio_card('CASH', res_today['final_cash'], changes['cash'], res_prev['final_cash'])
-        
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-        
-        # 전략 모니터
-        st.markdown("""
-        <div class="section-title">
-            <span>📡</span> STRATEGY MONITOR
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 기본 전략 요약
-        regime_icon = "📈" if res_today['is_bullish'] else "📉"
-        regime_label = "상승장" if res_today['is_bullish'] else "하락장"
-        regime_desc = "4개 MA 각 25%" if res_today['is_bullish'] else "MA20, MA45 각 50%"
-        
-        st.markdown(f"""
-        <div style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px;
-                    background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #a78bfa;
-                    margin-bottom: 16px; font-size: 12px;">
-            {regime_icon} 현재 레짐: <span style="font-weight: 700; font-family: 'JetBrains Mono', monospace;">{regime_label}</span> · {regime_desc}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 기본 TQQQ 비중 표시
-        st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; 
-                    background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); 
-                    border-radius: 10px; margin-bottom: 16px;">
-            <span style="color: #94a3b8; font-size: 13px;">기본 전략 TQQQ 비중</span>
-            <span style="color: #06b6d4; font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{res_today['final_tqqq']:.0%}</span>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # 각 MA별 상태
-        for ma in analyzer.ma_periods:
-            render_base_strategy_card(ma, latest, res_today['is_bullish'], analyzer.ma_periods)
-        
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-        
-        # 차트
-        st.markdown("""
-        <div class="section-title">
-            <span>📊</span> PRICE CHART
-        </div>
-        """, unsafe_allow_html=True)
-        
-        fig = go.Figure()
-        chart_data = data.iloc[-120:]
-        
-        fig.add_trace(go.Candlestick(
-            x=chart_data.index,
-            open=chart_data['TQQQ_Open'],
-            high=chart_data['TQQQ_High'],
-            low=chart_data['TQQQ_Low'],
-            close=chart_data['TQQQ_Close'],
-            name='TQQQ',
-            increasing_line_color='#10b981',
-            decreasing_line_color='#ef4444',
-            increasing_fillcolor='rgba(16, 185, 129, 0.8)',
-            decreasing_fillcolor='rgba(239, 68, 68, 0.8)'
-        ))
-        
-        ma_colors = ['#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899']
-        for i, ma in enumerate(analyzer.ma_periods):
-            fig.add_trace(go.Scatter(
-                x=chart_data.index,
-                y=chart_data[f'MA_{ma}'],
-                name=f'MA {ma}',
-                line=dict(color=ma_colors[i], width=1.5),
-                opacity=0.8
-            ))
-        
-        fig.update_layout(
-            height=450,
-            margin=dict(l=0, r=0, t=20, b=0),
-            template="plotly_dark",
-            paper_bgcolor='rgba(10, 11, 15, 0)',
-            plot_bgcolor='rgba(10, 11, 15, 0.5)',
-            xaxis_rangeslider_visible=False,
-            xaxis=dict(
-                gridcolor='rgba(71, 85, 105, 0.2)',
-                showgrid=True
-            ),
-            yaxis=dict(
-                gridcolor='rgba(71, 85, 105, 0.2)',
-                showgrid=True
-            ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                bgcolor='rgba(0,0,0,0)'
-            ),
-            font=dict(family="JetBrains Mono, monospace", color='#94a3b8')
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Stochastic 인디케이터
-        st.markdown(f"""
-        <div class="stoch-card">
-            <div class="stoch-info">
-                <div class="stoch-icon">📊</div>
-                <div>
-                    <div class="stoch-label">Stochastic (166, 57, 19)</div>
-                    <div class="stoch-values">
-                        <span class="stoch-k">%K {latest['%K']:.1f}</span>
-                        <span class="stoch-sep">/</span>
-                        <span class="stoch-d">%D {latest['%D']:.1f}</span>
+        <div class="allocation-details">
+            <div class="alloc-item">
+                <div class="alloc-dot alloc-dot-tqqq"></div>
+                <div class="alloc-info">
+                    <div class="alloc-name">TQQQ</div>
+                    <div>
+                        <span class="alloc-value">{result['tqqq']:.0%}</span>
+                        <span class="alloc-change {change_class}">{change_sign}{result['change']:.0%}</span>
                     </div>
                 </div>
             </div>
-            <div class="regime-badge {regime_class}">
-                {'📈' if res_today['is_bullish'] else '📉'} {regime_text}
+            <div class="alloc-item">
+                <div class="alloc-dot alloc-dot-cash"></div>
+                <div class="alloc-info">
+                    <div class="alloc-name">CASH</div>
+                    <div>
+                        <span class="alloc-value alloc-value-cash">{result['cash']:.0%}</span>
+                    </div>
+                </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ===== MA 신호 그리드 =====
+    st.markdown('<div class="section-title" style="margin-bottom: 12px;">📡 MA SIGNALS</div>', unsafe_allow_html=True)
+    
+    ma_html = '<div class="ma-grid">'
+    for ma in analyzer.ma_periods:
+        is_above = result['ma_signals'][ma]
+        dev = result['deviations'][ma]
         
-        # 푸터
-        st.markdown("""
-        <div class="footer">
-            Strategy 3 Basic + Cash Defense • Built with precision • Not financial advice
+        # 비중 기여도 계산
+        if result['is_bullish']:
+            contrib = 25 if is_above else 0
+            is_active = True
+        else:
+            if ma in [20, 45]:
+                contrib = 50 if is_above else 0
+                is_active = True
+            else:
+                contrib = 0
+                is_active = False
+        
+        # 카드 클래스
+        if not is_active:
+            card_class = 'ma-card-disabled'
+            status_class = 'ma-status-disabled'
+            status_text = 'N/A'
+        elif is_above:
+            card_class = 'ma-card-active'
+            status_class = 'ma-status-above'
+            status_text = '▲ ABOVE'
+        else:
+            card_class = 'ma-card-inactive'
+            status_class = 'ma-status-below'
+            status_text = '▼ BELOW'
+        
+        contrib_class = 'ma-contrib-active' if contrib > 0 else 'ma-contrib-zero'
+        contrib_text = f'+{contrib}%' if contrib > 0 else '—'
+        
+        ma_html += f"""
+        <div class="ma-card {card_class}">
+            <div class="ma-period">{ma}</div>
+            <div class="ma-status {status_class}">{status_text}</div>
+            <div class="ma-deviation">{dev:+.1f}%</div>
+            <div class="ma-contrib {contrib_class}">{contrib_text}</div>
         </div>
-        """, unsafe_allow_html=True)
+        """
+    ma_html += '</div>'
+    st.markdown(ma_html, unsafe_allow_html=True)
+    
+    # ===== Stochastic =====
+    st.markdown(f"""
+    <div class="stoch-section">
+        <div class="stoch-content">
+            <div class="stoch-values">
+                <div class="stoch-item">
+                    <div class="stoch-label">%K</div>
+                    <div class="stoch-value stoch-k">{result['stoch_k']:.1f}</div>
+                </div>
+                <div class="stoch-item">
+                    <div class="stoch-label">%D</div>
+                    <div class="stoch-value stoch-d">{result['stoch_d']:.1f}</div>
+                </div>
+            </div>
+            <div class="stoch-meter">
+                <div class="stoch-marker stoch-marker-d" style="left: {result['stoch_d']}%;"></div>
+                <div class="stoch-marker stoch-marker-k" style="left: {result['stoch_k']}%;"></div>
+            </div>
+            <div class="regime-badge {'regime-bullish' if result['is_bullish'] else 'regime-bearish'}">
+                {'%K > %D' if result['is_bullish'] else '%K < %D'}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ===== 차트 =====
+    st.markdown('<div class="chart-section">', unsafe_allow_html=True)
+    
+    chart_data = data.iloc[-100:]
+    
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        row_heights=[0.7, 0.3],
+        subplot_titles=('', '')
+    )
+    
+    # 캔들스틱
+    fig.add_trace(go.Candlestick(
+        x=chart_data.index,
+        open=chart_data['Open'],
+        high=chart_data['High'],
+        low=chart_data['Low'],
+        close=chart_data['Close'],
+        name='TQQQ',
+        increasing_line_color='#00ff88',
+        decreasing_line_color='#ff4757',
+        increasing_fillcolor='rgba(0, 255, 136, 0.8)',
+        decreasing_fillcolor='rgba(255, 71, 87, 0.8)'
+    ), row=1, col=1)
+    
+    # 이동평균선
+    ma_colors = ['#ffb800', '#00d4ff', '#a855f7', '#ff6b9d']
+    for i, ma in enumerate(analyzer.ma_periods):
+        fig.add_trace(go.Scatter(
+            x=chart_data.index,
+            y=chart_data[f'MA{ma}'],
+            name=f'MA{ma}',
+            line=dict(color=ma_colors[i], width=1.5),
+            opacity=0.85
+        ), row=1, col=1)
+    
+    # Stochastic
+    fig.add_trace(go.Scatter(
+        x=chart_data.index,
+        y=chart_data['%K'],
+        name='%K',
+        line=dict(color='#00d4ff', width=2)
+    ), row=2, col=1)
+    
+    fig.add_trace(go.Scatter(
+        x=chart_data.index,
+        y=chart_data['%D'],
+        name='%D',
+        line=dict(color='#ffb800', width=2)
+    ), row=2, col=1)
+    
+    # 레이아웃
+    fig.update_layout(
+        height=500,
+        margin=dict(l=0, r=0, t=10, b=0),
+        template='plotly_dark',
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(13, 17, 23, 0.5)',
+        xaxis_rangeslider_visible=False,
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
+            xanchor='right',
+            x=1,
+            bgcolor='rgba(0,0,0,0)',
+            font=dict(size=11)
+        ),
+        font=dict(family='JetBrains Mono, monospace', color='#8b949e', size=11)
+    )
+    
+    fig.update_xaxes(gridcolor='rgba(48, 54, 61, 0.4)', showgrid=True)
+    fig.update_yaxes(gridcolor='rgba(48, 54, 61, 0.4)', showgrid=True)
+    fig.update_yaxes(range=[0, 100], row=2, col=1)
+    
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # ===== 푸터 =====
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("🔄 새로고침"):
+            st.cache_data.clear()
+            st.rerun()
+    
+    st.markdown("""
+    <div class="footer">
+        TQQQ Sniper v6.0 · Strategy 3 Basic + Cash Defense · Not Financial Advice
+    </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
