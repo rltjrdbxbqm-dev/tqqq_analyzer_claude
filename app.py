@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 # 1. 페이지 설정 및 프리미엄 CSS 스타일링
 # -----------------------------------------------------------
 st.set_page_config(
-    page_title="TQQQ Sniper v5.0",
+    page_title="TQQQ Sniper v5.1",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -264,9 +264,9 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
     }
     
-    .portfolio-card-btal:hover {
-        border-color: rgba(139, 92, 246, 0.3);
-        box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+    .portfolio-card-cash:hover {
+        border-color: rgba(245, 158, 11, 0.3);
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
     }
     
     .portfolio-header {
@@ -312,8 +312,8 @@ st.markdown("""
         color: #06b6d4;
     }
     
-    .portfolio-value-btal {
-        color: #8b5cf6;
+    .portfolio-value-cash {
+        color: #f59e0b;
     }
     
     /* 커스텀 프로그레스 바 */
@@ -334,8 +334,8 @@ st.markdown("""
         background: linear-gradient(90deg, #06b6d4, #10b981);
     }
     
-    .progress-btal {
-        background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+    .progress-cash {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
     }
     
     /* Stochastic 카드 */
@@ -473,7 +473,7 @@ st.markdown("""
 # 2. 분석기 클래스 정의
 # -----------------------------------------------------------
 class RealTimeInvestmentAnalyzer:
-    """실시간 투자 신호 분석기 - v5.0 (기본 전략 Only, BTAL 방어)"""
+    """실시간 투자 신호 분석기 - v5.1 (기본 전략 Only, Cash 방어)"""
 
     def __init__(self):
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
@@ -484,19 +484,20 @@ class RealTimeInvestmentAnalyzer:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
-            tickers = ['TQQQ', 'BTAL']
-            data = {}
-            for ticker in tickers:
-                stock_data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-                if isinstance(stock_data.columns, pd.MultiIndex):
-                    stock_data.columns = stock_data.columns.droplevel(1)
-                data[ticker] = stock_data
+            # TQQQ만 다운로드 (Cash는 가격 데이터 불필요)
+            ticker = yf.Ticker('TQQQ')
+            stock_data = ticker.history(start=start_date, end=end_date, auto_adjust=True)
             
+            if stock_data.empty:
+                st.error("TQQQ 데이터를 가져올 수 없습니다.")
+                return None
+            
+            # 컬럼명 정리
             combined_data = pd.DataFrame()
-            for ticker in tickers:
-                for col in ['Open', 'High', 'Low', 'Close']:
-                    if col in data[ticker].columns:
-                        combined_data[f'{ticker}_{col}'] = data[ticker][col]
+            combined_data['TQQQ_Open'] = stock_data['Open']
+            combined_data['TQQQ_High'] = stock_data['High']
+            combined_data['TQQQ_Low'] = stock_data['Low']
+            combined_data['TQQQ_Close'] = stock_data['Close']
             
             return combined_data.dropna()
         except Exception as e:
@@ -528,11 +529,11 @@ class RealTimeInvestmentAnalyzer:
         else: 
             base_tqqq = (int(ma_signals[20]) + int(ma_signals[45])) * 0.5
         
-        base_btal = 1 - base_tqqq
+        base_cash = 1 - base_tqqq
             
         return {
             'final_tqqq': base_tqqq, 
-            'final_btal': base_btal,
+            'final_cash': base_cash,
             'is_bullish': is_bullish,
             'ma_signals': ma_signals
         }
@@ -544,15 +545,15 @@ class RealTimeInvestmentAnalyzer:
         
         changes = {
             'tqqq': today['final_tqqq'] - yesterday['final_tqqq'], 
-            'btal': today['final_btal'] - yesterday['final_btal']
+            'cash': today['final_cash'] - yesterday['final_cash']
         }
         
         actions = []
-        for asset, chg in changes.items():
-            if chg > 0.01: 
-                actions.append({'action': '매수', 'asset': asset.upper(), 'amt': chg})
-            elif chg < -0.01: 
-                actions.append({'action': '매도', 'asset': asset.upper(), 'amt': abs(chg)})
+        tqqq_chg = changes['tqqq']
+        if tqqq_chg > 0.01: 
+            actions.append({'action': '매수', 'asset': 'TQQQ', 'amt': tqqq_chg})
+        elif tqqq_chg < -0.01: 
+            actions.append({'action': '매도', 'asset': 'TQQQ', 'amt': abs(tqqq_chg)})
         
         return today, yesterday, changes, actions
 
@@ -606,7 +607,7 @@ def render_action_card(actions):
 def render_portfolio_card(asset, value, change, prev_value):
     colors = {
         'TQQQ': {'value': 'portfolio-value-tqqq', 'progress': 'progress-tqqq', 'hover': ''},
-        'BTAL': {'value': 'portfolio-value-btal', 'progress': 'progress-btal', 'hover': 'portfolio-card-btal'},
+        'CASH': {'value': 'portfolio-value-cash', 'progress': 'progress-cash', 'hover': 'portfolio-card-cash'},
     }
     
     change_class = 'portfolio-change-neutral'
@@ -750,9 +751,9 @@ def main():
             <div>
                 <div>
                     <span class="header-title">TQQQ SNIPER</span>
-                    <span class="header-version">v5.0</span>
+                    <span class="header-version">v5.1</span>
                 </div>
-                <div class="header-subtitle">Strategy 3 Basic + BTAL Defense</div>
+                <div class="header-subtitle">Strategy 3 Basic + Cash Defense</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -812,7 +813,7 @@ def main():
         with col1:
             render_portfolio_card('TQQQ', res_today['final_tqqq'], changes['tqqq'], res_prev['final_tqqq'])
         with col2:
-            render_portfolio_card('BTAL', res_today['final_btal'], changes['btal'], res_prev['final_btal'])
+            render_portfolio_card('CASH', res_today['final_cash'], changes['cash'], res_prev['final_cash'])
         
         st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
         
@@ -936,7 +937,7 @@ def main():
         # 푸터
         st.markdown("""
         <div class="footer">
-            Strategy 3 Basic + BTAL Defense • Built with precision • Not financial advice
+            Strategy 3 Basic + Cash Defense • Built with precision • Not financial advice
         </div>
         """, unsafe_allow_html=True)
 
