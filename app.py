@@ -449,8 +449,8 @@ class TQQQAnalyzer:
         self.stoch_config = {'period': 166, 'k_period': 57, 'd_period': 19}
         self.ma_periods = [20, 45, 151, 212]
 
-    @st.cache_data(ttl=300)
-    def get_data(_self, days_back=400):
+    def get_data(self, days_back=400):
+        """TQQQ 데이터 가져오기 (캐시 제거)"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         try:
@@ -628,13 +628,14 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # ===== MA Signals (Streamlit 네이티브 컴포넌트 사용) =====
+    # ===== MA Signals =====
     st.markdown('<div class="section-label" style="margin: 16px 0 8px 0;">📡 MA SIGNALS</div>', unsafe_allow_html=True)
     
     cols = st.columns(4)
     for i, ma in enumerate(analyzer.ma_periods):
         is_above = r['ma_signals'][ma]
         dev = r['deviations'][ma]
+        ma_val = r['ma_values'][ma]
         
         # 비중 기여도 계산
         if r['is_bullish']:
@@ -670,7 +671,7 @@ def main():
             <div class="ma-card {card_class}">
                 <div class="ma-period">{ma}</div>
                 <div class="ma-status {status_class}">{status_text}</div>
-                <div class="ma-dev">{dev:+.1f}%</div>
+                <div class="ma-dev">${ma_val:.2f} ({dev:+.1f}%)</div>
                 <div class="ma-contrib {contrib_class}">{contrib_text}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -774,13 +775,12 @@ def main():
     
     # ===== 새로고침 버튼 =====
     if st.button("🔄 새로고침"):
-        st.cache_data.clear()
         st.rerun()
     
     # ===== 푸터 =====
-    st.markdown("""
+    st.markdown(f"""
     <div class="app-footer">
-        TQQQ Sniper v6.1 · Strategy 3 Basic + Cash · Not Financial Advice
+        TQQQ Sniper v6.2 · 마지막 업데이트: {datetime.now().strftime('%H:%M:%S')} · Not Financial Advice
     </div>
     """, unsafe_allow_html=True)
 
